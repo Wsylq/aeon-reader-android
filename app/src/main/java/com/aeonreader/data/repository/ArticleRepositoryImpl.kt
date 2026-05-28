@@ -53,8 +53,11 @@ class ArticleRepositoryImpl @Inject constructor(
     override suspend fun getArticle(url: String): Result<Article> {
         val cached = articleDao.getArticle(url)
         if (cached != null) {
-            articleDao.updateLastAccessed(url, System.currentTimeMillis())
-            return Result.success(cached.toDomainArticle(parser))
+            val domain = cached.toDomainArticle(parser)
+            if (domain != null) {
+                articleDao.updateLastAccessed(url, System.currentTimeMillis())
+                return Result.success(domain)
+            }
         }
 
         return try {
@@ -108,9 +111,9 @@ class ArticleRepositoryImpl @Inject constructor(
     override fun observeNetworkStatus(): Flow<Boolean> = networkMonitor.networkStatus
 }
 
-private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article {
+private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article? {
     val deserialized = parser.deserialize(bodyJson)
-    val blocks = deserialized.getOrNull()?.bodyBlocks ?: emptyList()
+    val blocks = deserialized.getOrNull()?.bodyBlocks ?: return null
     return Article(
         url = url,
         title = title,
