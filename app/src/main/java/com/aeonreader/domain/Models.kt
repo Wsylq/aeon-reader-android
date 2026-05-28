@@ -47,3 +47,14 @@ data class ReadingProgress(
 )
 
 enum class ThemeOverride { NONE, LIGHT, DARK }
+
+enum class ReadingFont(val displayName: String) {
+    SANS("Sans Serif"),
+    SERIF("Serif"),
+    MONO("Monospace")
+}
+
+data class ReadingPreferences(
+    val font: ReadingFont = ReadingFont.SANS,
+    val fontSize: Int = 16
+)

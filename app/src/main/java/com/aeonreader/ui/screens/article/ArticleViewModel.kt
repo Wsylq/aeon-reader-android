@@ -5,14 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.ReadingProgressRepository
+import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.Article
+import com.aeonreader.domain.ReadingPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,13 +34,23 @@ sealed interface ArticleUiState {
 class ArticleViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
-    private val readingProgressRepository: ReadingProgressRepository
+    private val readingProgressRepository: ReadingProgressRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArticleUiState>(ArticleUiState.Loading)
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
+    val readingPrefs: StateFlow<ReadingPreferences> = userPreferencesRepository.readingPreferences
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ReadingPreferences())
+
     private var progressSaveJob: Job? = null
+
+    fun setReadingPrefs(prefs: ReadingPreferences) {
+        viewModelScope.launch {
+            userPreferencesRepository.setReadingPreferences(prefs)
+        }
+    }
 
     fun loadArticle(url: String) {
         viewModelScope.launch {

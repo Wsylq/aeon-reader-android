@@ -2,8 +2,11 @@ package com.aeonreader.data.repository
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.aeonreader.domain.ReadingFont
+import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ThemeOverride
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +24,8 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     companion object {
         private val SELECTED_CATEGORY = stringPreferencesKey("selected_category")
         private val THEME_OVERRIDE = stringPreferencesKey("theme_override")
+        private val READING_FONT = stringPreferencesKey("reading_font")
+        private val READING_FONT_SIZE = intPreferencesKey("reading_font_size")
     }
 
     override val selectedCategory: Flow<String> = context.dataStore.data.map { prefs ->
@@ -33,6 +38,13 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             "DARK" -> ThemeOverride.DARK
             else -> ThemeOverride.NONE
         }
+    }
+
+    override val readingPreferences: Flow<ReadingPreferences> = context.dataStore.data.map { prefs ->
+        val fontName = prefs[READING_FONT] ?: "SANS"
+        val fontSize = prefs[READING_FONT_SIZE] ?: 16
+        val font = try { ReadingFont.valueOf(fontName) } catch (_: Exception) { ReadingFont.SANS }
+        ReadingPreferences(font = font, fontSize = fontSize)
     }
 
     override suspend fun setSelectedCategory(category: String) {
@@ -48,6 +60,13 @@ class UserPreferencesRepositoryImpl @Inject constructor(
                 ThemeOverride.LIGHT -> "LIGHT"
                 ThemeOverride.DARK -> "DARK"
             }
+        }
+    }
+
+    override suspend fun setReadingPreferences(prefs: ReadingPreferences) {
+        context.dataStore.edit { stored ->
+            stored[READING_FONT] = prefs.font.name
+            stored[READING_FONT_SIZE] = prefs.fontSize
         }
     }
 }
