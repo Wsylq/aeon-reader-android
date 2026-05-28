@@ -104,6 +104,7 @@ class ArticleViewModel @Inject constructor(
                 } else {
                     bookmarkRepository.addBookmark(summary)
                 }
+                _uiState.value = state.copy(isBookmarked = !state.isBookmarked)
             }
         }
     }
