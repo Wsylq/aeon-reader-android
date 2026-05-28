@@ -200,8 +200,9 @@ class AeonParserImpl @Inject constructor() : AeonParser {
     private fun extractBodyBlocks(doc: Element): List<ContentBlock> {
         val main = doc.selectFirst("main")
         val content = if (main != null) {
-            val sections = main.children().filter { it.tagName() == "div" }
-            sections.maxByOrNull { it.text().length } ?: main
+            main.selectFirst("#article-content, .article-content, [id*=article-content]")
+                ?: main.children().filter { it.tagName() == "div" }.maxByOrNull { it.text().length }
+                ?: main
         } else {
             doc.selectFirst("article") ?: doc
         }
@@ -414,6 +415,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             }
         }
         return buildString {
+            appendLine("@cache_version=2")
             appendLine(escape(article.url))
             appendLine(escape(article.title))
             appendLine(escape(article.author ?: ""))
@@ -429,19 +431,23 @@ class AeonParserImpl @Inject constructor() : AeonParser {
     override fun deserialize(json: String): Result<Article> {
         return try {
             val lines = json.split("\n")
-            if (lines.size < 8) {
+            if (lines.size < 9) {
                 return Result.failure(Exception("Invalid serialized format"))
             }
-            val url = unescape(lines[0])
-            val title = unescape(lines[1])
-            val author = unescape(lines[2]).ifEmpty { null }
-            val authorBio = unescape(lines[3]).ifEmpty { null }
-            val pubDateStr = unescape(lines[4])
+            val versionLine = lines[0]
+            if (!versionLine.startsWith("@cache_version=")) {
+                return Result.failure(Exception("Unknown cache format"))
+            }
+            val url = unescape(lines[1])
+            val title = unescape(lines[2])
+            val author = unescape(lines[3]).ifEmpty { null }
+            val authorBio = unescape(lines[4]).ifEmpty { null }
+            val pubDateStr = unescape(lines[5])
             val publicationDate = if (pubDateStr.isNotEmpty()) LocalDate.parse(pubDateStr) else null
-            val category = unescape(lines[5]).ifEmpty { null }
-            val heroImageUrl = unescape(lines[6]).ifEmpty { null }
-            val wordCount = lines[7].toIntOrNull() ?: 0
-            val bodyJson = lines.drop(8).joinToString("\n")
+            val category = unescape(lines[6]).ifEmpty { null }
+            val heroImageUrl = unescape(lines[7]).ifEmpty { null }
+            val wordCount = lines[8].toIntOrNull() ?: 0
+            val bodyJson = lines.drop(9).joinToString("\n")
 
             val bodyBlocks = if (bodyJson.isNotEmpty()) {
                 bodyJson.split("|").mapNotNull { block ->
