@@ -1,5 +1,9 @@
 # Aeon Reader
 
+<p align="center">
+  <img src="icon.svg" width="128" height="128" alt="Aeon Reader logo">
+</p>
+
 An Android app for reading aeon.co articles offline. No server required.
 
 ## Why
