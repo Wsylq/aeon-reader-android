@@ -1,6 +1,7 @@
 package com.aeonreader
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -53,29 +54,33 @@ private fun UpdateDialogHost(
     updateManager: AppUpdateManager
 ) {
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
-    var shown by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
 
     val prefs = context.getSharedPreferences("app_updates", Context.MODE_PRIVATE)
-    val updatePromptShown = prefs.getBoolean("update_prompt_shown", false)
 
     LaunchedEffect(Unit) {
-        if (updatePromptShown) return@LaunchedEffect
-        if (shown) return@LaunchedEffect
+        val currentVersion = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0"
+        } catch (_: PackageManager.NameNotFoundException) { "0" }
 
-        show@ withContext(Dispatchers.IO) {
-            val currentVersion = "1.0"
+        val lastPromptedVersion = prefs.getString("last_prompted_version", "") ?: ""
+
+        if (lastPromptedVersion == currentVersion) return@LaunchedEffect
+
+        check@ withContext(Dispatchers.IO) {
             val result = updateManager.checkForUpdate(currentVersion)
             val info = result.getOrNull() ?: return@withContext
             updateInfo = info
-            shown = true
+            showDialog = true
         }
     }
 
-    updateInfo?.let { info ->
+    if (showDialog && updateInfo != null) {
+        val info = updateInfo!!
         AlertDialog(
             onDismissRequest = {
-                prefs.edit().putBoolean("update_prompt_shown", true).apply()
-                updateInfo = null
+                prefs.edit().putString("last_prompted_version", info.latestVersion).apply()
+                showDialog = false
             },
             title = {
                 Text(
@@ -92,16 +97,16 @@ private fun UpdateDialogHost(
             confirmButton = {
                 TextButton(onClick = {
                     updateManager.downloadAndInstall(context, info.downloadUrl)
-                    prefs.edit().putBoolean("update_prompt_shown", true).apply()
-                    updateInfo = null
+                    prefs.edit().putString("last_prompted_version", info.latestVersion).apply()
+                    showDialog = false
                 }) {
                     Text("Update")
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    prefs.edit().putBoolean("update_prompt_shown", true).apply()
-                    updateInfo = null
+                    prefs.edit().putString("last_prompted_version", info.latestVersion).apply()
+                    showDialog = false
                 }) {
                     Text("Later")
                 }
