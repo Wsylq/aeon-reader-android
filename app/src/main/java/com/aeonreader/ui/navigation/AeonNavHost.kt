@@ -1,5 +1,8 @@
 package com.aeonreader.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -45,10 +48,16 @@ fun AeonNavHost(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val isArticleReader = currentDestination?.route?.startsWith("article") == true
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            AnimatedVisibility(
+                visible = !isArticleReader,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it })
+            ) {
+                NavigationBar {
                 navItems.forEach { item ->
                     val selected = currentDestination?.hierarchy?.any {
                         it.route == item.screen.route
@@ -71,6 +80,7 @@ fun AeonNavHost(
                         label = { Text(item.screen.title) }
                     )
                 }
+            }
             }
         },
         modifier = modifier

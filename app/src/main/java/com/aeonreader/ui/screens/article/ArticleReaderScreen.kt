@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -37,8 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -113,8 +110,7 @@ fun ArticleReaderScreen(
                 onToggleBookmark = { viewModel.toggleBookmark() },
                 onProgressUpdate = { viewModel.updateProgress(it) },
                 modifier = modifier,
-                viewModel = viewModel,
-                onBack = onBack
+                viewModel = viewModel
             )
         }
     }
@@ -129,13 +125,11 @@ private fun ArticleReaderContent(
     onToggleBookmark: () -> Unit,
     onProgressUpdate: (Float) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ArticleViewModel,
-    onBack: () -> Unit
+    viewModel: ArticleViewModel
 ) {
     val listState = rememberLazyListState()
     var showSettings by remember { mutableStateOf(false) }
     val readingPrefs by viewModel.readingPrefs.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     val progress by remember {
         derivedStateOf {
@@ -166,43 +160,13 @@ private fun ArticleReaderContent(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = article.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        modifier = modifier
-    ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            LinearProgressIndicator(
-                progress = { progress / 100f },
-                modifier = Modifier.fillMaxWidth().height(3.dp),
-            )
+    Column(modifier = modifier.fillMaxSize()) {
+        LinearProgressIndicator(
+            progress = { progress / 100f },
+            modifier = Modifier.fillMaxWidth().height(3.dp),
+        )
 
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-            ) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().weight(1f)) {
                 item {
                     if (article.heroImageUrl != null) {
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -288,7 +252,6 @@ private fun ArticleReaderContent(
 
                 item {
                     Spacer(modifier = Modifier.height(48.dp))
-                }
             }
         }
     }
