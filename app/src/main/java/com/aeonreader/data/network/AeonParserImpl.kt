@@ -38,8 +38,19 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 val titleEl = card.selectFirst("p font-bold font-serif, h2, h3")
                 val title = titleEl?.text()?.ifBlank { null } ?: return@mapNotNull null
 
+                val descEl = card.selectFirst("p.mb-0.text-base")
+                val description = descEl?.text()?.ifBlank { null }
+
                 val authorEl = card.selectFirst("p font-sans, p.text-sm, [class*=author]")
                 val author = authorEl?.text()?.ifBlank { null }
+
+                // fallback: use the largest non-title, non-author text paragraph in the card
+                val fallbackDesc = if (description == null) {
+                    card.select("p").filter { p ->
+                        val t = p.text().trim()
+                        t.length > 20 && t != title && (author == null || t != author)
+                    }.maxByOrNull { it.text().length }?.text()?.trim()?.ifBlank { null }
+                } else null
 
                 val imgEl = card.selectFirst("img[src]")
                 val heroImage = imgEl?.let { extractSrc(it) }
@@ -51,6 +62,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 ArticleSummary(
                     url = url,
                     title = title,
+                    description = description ?: fallbackDesc,
                     author = author,
                     category = null,
                     heroImageUrl = heroImage,
@@ -90,7 +102,12 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             val imgEl = descDoc.selectFirst("img[src]")
             val heroImage = imgEl?.let { extractSrc(it) }
 
-            val snippet = descDoc.text().ifBlank { null }
+            // RSS description structure: <p><img/></p><p>description text</p><p><em>- author</em></p><p><a>Read on Aeon</a></p>
+            val descParas = descDoc.select("p").filter { p ->
+                val t = p.text().trim()
+                t.length > 15 && p.select("img, a").isEmpty()
+            }
+            val snippet = descParas.firstOrNull()?.text()?.ifBlank { null }
             val textContent = "$title ${snippet ?: ""}"
             val wordCount = textContent.split("\\s+".toRegex()).size
             val readingTime = ceil(wordCount / 200.0).toInt().coerceAtLeast(1)
@@ -98,6 +115,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             ArticleSummary(
                 url = url,
                 title = title,
+                description = snippet,
                 author = author,
                 category = null,
                 heroImageUrl = heroImage,
@@ -122,6 +140,9 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             val titleEl = doc.selectFirst("h1") ?: return Result.failure(Exception("No h1 found"))
             val title = titleEl.text().ifBlank { return Result.failure(Exception("Empty title")) }
 
+            val descEl = doc.selectFirst("h2.mb-6, h2[class*=max-w-120], h2[class*=text-pretty]")
+            val description = descEl?.text()?.ifBlank { null }
+
             val bodyText = doc.text()
 
             val author = extractAuthor(bodyText)
@@ -140,6 +161,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     is ContentBlock.Paragraph -> block.text.split("\\s+".toRegex()).size
                     is ContentBlock.Subheading -> block.text.split("\\s+".toRegex()).size
                     is ContentBlock.BlockQuote -> block.text.split("\\s+".toRegex()).size
+                    is ContentBlock.PullQuote -> block.text.split("\\s+".toRegex()).size
                     is ContentBlock.InlineImage -> 0
                 }
             }
@@ -148,6 +170,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 Article(
                     url = "",
                     title = title,
+                    description = description,
                     author = author,
                     authorBio = null,
                     publicationDate = publicationDate,
@@ -234,13 +257,18 @@ class AeonParserImpl @Inject constructor() : AeonParser {
 
             val tag = el.tagName()
             val text = el.text().trim()
+            val classAttr = el.className()
 
             when (tag) {
                 "p" -> {
                     if (el.select("a[href*=syndicate], a[href*=save]").isNotEmpty()) continue
                     if (el.select("a[href^='#annotation']").isNotEmpty()) continue
                     if (text.length < 20 && el.select("img").isEmpty()) continue
-                    if (el.select("img").isNotEmpty()) {
+                    if (classAttr.contains("pullquote")) {
+                        if (text.isNotEmpty()) {
+                            blocks.add(ContentBlock.PullQuote(text))
+                        }
+                    } else if (el.select("img").isNotEmpty()) {
                         val img = el.selectFirst("img[src]") ?: continue
                         seen.add(img)
                         blocks.add(ContentBlock.InlineImage(extractSrc(img), null))
@@ -297,6 +325,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     ArticleSummary(
                         url = url,
                         title = title,
+                        description = snippet,
                         author = null,
                         category = null,
                         heroImageUrl = null,
@@ -334,6 +363,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                         ArticleSummary(
                             url = url,
                             title = title,
+                            description = summary.ifBlank { null },
                             author = null,
                             category = null,
                             heroImageUrl = imageUrl,
@@ -370,6 +400,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 ArticleSummary(
                     url = url,
                     title = title,
+                    description = snippet,
                     author = null,
                     category = null,
                     heroImageUrl = null,
@@ -411,13 +442,15 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 is ContentBlock.Paragraph -> "p:${block.text}"
                 is ContentBlock.Subheading -> "h:${block.text}"
                 is ContentBlock.BlockQuote -> "bq:${block.text}"
+                is ContentBlock.PullQuote -> "pq:${block.text}"
                 is ContentBlock.InlineImage -> "img:${block.url}|${block.caption ?: ""}"
             }
         }
         return buildString {
-            appendLine("@cache_version=2")
+            appendLine("@cache_version=3")
             appendLine(escape(article.url))
             appendLine(escape(article.title))
+            appendLine(escape(article.description ?: ""))
             appendLine(escape(article.author ?: ""))
             appendLine(escape(article.authorBio ?: ""))
             appendLine(escape(article.publicationDate?.toString() ?: ""))
@@ -431,7 +464,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
     override fun deserialize(json: String): Result<Article> {
         return try {
             val lines = json.split("\n")
-            if (lines.size < 9) {
+            if (lines.size < 10) {
                 return Result.failure(Exception("Invalid serialized format"))
             }
             val versionLine = lines[0]
@@ -440,14 +473,15 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             }
             val url = unescape(lines[1])
             val title = unescape(lines[2])
-            val author = unescape(lines[3]).ifEmpty { null }
-            val authorBio = unescape(lines[4]).ifEmpty { null }
-            val pubDateStr = unescape(lines[5])
+            val description = unescape(lines[3]).ifEmpty { null }
+            val author = unescape(lines[4]).ifEmpty { null }
+            val authorBio = unescape(lines[5]).ifEmpty { null }
+            val pubDateStr = unescape(lines[6])
             val publicationDate = if (pubDateStr.isNotEmpty()) LocalDate.parse(pubDateStr) else null
-            val category = unescape(lines[6]).ifEmpty { null }
-            val heroImageUrl = unescape(lines[7]).ifEmpty { null }
-            val wordCount = lines[8].toIntOrNull() ?: 0
-            val bodyJson = lines.drop(9).joinToString("\n")
+            val category = unescape(lines[7]).ifEmpty { null }
+            val heroImageUrl = unescape(lines[8]).ifEmpty { null }
+            val wordCount = lines[9].toIntOrNull() ?: 0
+            val bodyJson = lines.drop(10).joinToString("\n")
 
             val bodyBlocks = if (bodyJson.isNotEmpty()) {
                 bodyJson.split("|").mapNotNull { block ->
@@ -457,6 +491,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                         "p" -> ContentBlock.Paragraph(content)
                         "h" -> ContentBlock.Subheading(content)
                         "bq" -> ContentBlock.BlockQuote(content)
+                        "pq" -> ContentBlock.PullQuote(content)
                         "img" -> {
                             val parts = content.split("|", limit = 2)
                             ContentBlock.InlineImage(parts[0], parts.getOrNull(1)?.ifEmpty { null })
@@ -472,6 +507,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 Article(
                     url = url,
                     title = title,
+                    description = description,
                     author = author,
                     authorBio = authorBio,
                     publicationDate = publicationDate,

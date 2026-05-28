@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -34,7 +35,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,11 +52,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -60,6 +66,7 @@ import coil.compose.AsyncImage
 import com.aeonreader.domain.Article
 import com.aeonreader.domain.ContentBlock
 import com.aeonreader.domain.ReadingFont
+import com.aeonreader.domain.ReadingPreferences
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
@@ -106,7 +113,8 @@ fun ArticleReaderScreen(
                 onToggleBookmark = { viewModel.toggleBookmark() },
                 onProgressUpdate = { viewModel.updateProgress(it) },
                 modifier = modifier,
-                viewModel = viewModel
+                viewModel = viewModel,
+                onBack = onBack
             )
         }
     }
@@ -121,21 +129,23 @@ private fun ArticleReaderContent(
     onToggleBookmark: () -> Unit,
     onProgressUpdate: (Float) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ArticleViewModel
+    viewModel: ArticleViewModel,
+    onBack: () -> Unit
 ) {
     val listState = rememberLazyListState()
     var showSettings by remember { mutableStateOf(false) }
+    val readingPrefs by viewModel.readingPrefs.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     val progress by remember {
         derivedStateOf {
-            if (listState.layoutInfo.totalItemsCount == 0) 0f
+            val totalItems = listState.layoutInfo.totalItemsCount
+            if (totalItems == 0) 0f
             else {
-                val visibleItems = listState.layoutInfo.visibleItemsInfo
-                if (visibleItems.isEmpty()) 0f
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+                if (lastVisible == null) 0f
                 else {
-                    val firstVisible = visibleItems.first().index
-                    val total = listState.layoutInfo.totalItemsCount
-                    (firstVisible.toFloat() / total.toFloat()) * 100f
+                    ((lastVisible.index + 1).toFloat() / totalItems.toFloat()) * 100f
                 }
             }
         }
@@ -156,86 +166,129 @@ private fun ArticleReaderContent(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        LinearProgressIndicator(
-            progress = { progress / 100f },
-            modifier = Modifier.fillMaxWidth().height(3.dp),
-        )
-
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().weight(1f)) {
-            item {
-                if (article.heroImageUrl != null) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        AsyncImage(
-                            model = article.heroImageUrl,
-                            contentDescription = article.title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(260.dp)
-                                .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 8.dp)
-                ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
                     Text(
                         text = article.title,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        article.author?.let {
-                            Text(text = "By $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        article.publicationDate?.let {
-                            if (article.author != null) {
-                                Text(text = " · ", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Text(text = it.toString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Text(text = " · ${ceil((article.wordCount / 200.0)).toInt()} min read", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-
-                    Spacer(modifier = Modifier.height(2.dp))
-                }
-            }
-
-            item {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)) {
-                    IconButton(onClick = onToggleBookmark, modifier = Modifier.size(36.dp)) {
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = { showSettings = true }, modifier = Modifier.size(36.dp)) {
+                },
+                scrollBehavior = scrollBehavior
+            )
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            LinearProgressIndicator(
+                progress = { progress / 100f },
+                modifier = Modifier.fillMaxWidth().height(3.dp),
+            )
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+            ) {
+                item {
+                    if (article.heroImageUrl != null) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            AsyncImage(
+                                model = article.heroImageUrl,
+                                contentDescription = article.title,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(260.dp)
+                                    .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 8.dp)
+                    ) {
                         Text(
-                            text = "Aa",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = article.title,
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (article.description != null) {
+                            Text(
+                                text = article.description,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Normal,
+                                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            article.author?.let {
+                                Text(text = "By $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            article.publicationDate?.let {
+                                if (article.author != null) {
+                                    Text(text = " · ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text(text = it.toString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(text = " · ${ceil((article.wordCount / 200.0)).toInt()} min read", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
                     }
                 }
-            }
 
-            items(article.bodyBlocks) { block ->
-                ContentBlockItem(block)
-            }
+                item {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)) {
+                        IconButton(onClick = onToggleBookmark, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { showSettings = true }, modifier = Modifier.size(36.dp)) {
+                            Text(
+                                text = "Aa",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
 
-            item {
-                Spacer(modifier = Modifier.height(48.dp))
+                items(article.bodyBlocks) { block ->
+                    ContentBlockItem(block, readingPrefs)
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(48.dp))
+                }
             }
         }
     }
@@ -249,64 +302,107 @@ private fun ArticleReaderContent(
 }
 
 @Composable
-private fun ContentBlockItem(block: ContentBlock) {
+private fun ContentBlockItem(block: ContentBlock, prefs: ReadingPreferences) {
     when (block) {
-        is ContentBlock.Paragraph -> ReaderParagraph(block.text)
-        is ContentBlock.Subheading -> ReaderSubheading(block.text)
-        is ContentBlock.BlockQuote -> ReaderBlockQuote(block.text)
+        is ContentBlock.Paragraph -> ReaderParagraph(block.text, prefs)
+        is ContentBlock.Subheading -> ReaderSubheading(block.text, prefs)
+        is ContentBlock.BlockQuote -> ReaderBlockQuote(block.text, prefs)
+        is ContentBlock.PullQuote -> ReaderPullQuote(block.text, prefs)
         is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption)
     }
 }
 
 @Composable
-private fun ReaderParagraph(text: String) {
+private fun ReaderParagraph(text: String, prefs: ReadingPreferences) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
-            lineHeight = 28.sp,
+            fontSize = prefs.fontSize.sp,
+            fontFamily = when (prefs.font) {
+                ReadingFont.SANS -> FontFamily.SansSerif
+                ReadingFont.SERIF -> FontFamily.Serif
+                ReadingFont.MONO -> FontFamily.Monospace
+            },
+            lineHeight = (prefs.fontSize * 1.7).sp,
             letterSpacing = 0.15.sp
         ),
-        color = Color(0xFF1C1C1E),
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
     )
 }
 
 @Composable
-private fun ReaderSubheading(text: String) {
+private fun ReaderSubheading(text: String, prefs: ReadingPreferences) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleLarge.copy(
+            fontSize = (prefs.fontSize + 4).sp,
+            fontFamily = when (prefs.font) {
+                ReadingFont.SANS -> FontFamily.SansSerif
+                ReadingFont.SERIF -> FontFamily.Serif
+                ReadingFont.MONO -> FontFamily.Monospace
+            },
             fontWeight = FontWeight.SemiBold,
-            lineHeight = 30.sp
+            lineHeight = (prefs.fontSize * 1.8).sp
         ),
-        color = Color(0xFF1C1C1E),
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
     )
 }
 
 @Composable
-private fun ReaderBlockQuote(text: String) {
+private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
+            fontSize = prefs.fontSize.sp,
+            fontFamily = when (prefs.font) {
+                ReadingFont.SANS -> FontFamily.SansSerif
+                ReadingFont.SERIF -> FontFamily.Serif
+                ReadingFont.MONO -> FontFamily.Monospace
+            },
             fontStyle = FontStyle.Italic,
-            lineHeight = 28.sp,
+            lineHeight = (prefs.fontSize * 1.7).sp,
             letterSpacing = 0.15.sp
         ),
-        color = Color(0xFF3A3A3C),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 8.dp)
             .background(
-                color = Color(0xFFF2F2F7),
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(6.dp)
             )
             .border(
                 width = 1.dp,
-                color = Color(0xFFD1D1D6),
+                color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(6.dp)
             )
             .padding(16.dp)
+    )
+}
+
+@Composable
+private fun ReaderPullQuote(text: String, prefs: ReadingPreferences) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge.copy(
+            fontSize = (prefs.fontSize + 2).sp,
+            fontFamily = when (prefs.font) {
+                ReadingFont.SANS -> FontFamily.SansSerif
+                ReadingFont.SERIF -> FontFamily.Serif
+                ReadingFont.MONO -> FontFamily.Monospace
+            },
+            fontWeight = FontWeight.Bold,
+            fontStyle = FontStyle.Italic,
+            lineHeight = (prefs.fontSize * 1.6).sp,
+            letterSpacing = 0.5.sp
+        ),
+        color = MaterialTheme.colorScheme.primary,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 24.dp)
     )
 }
 
@@ -324,14 +420,14 @@ private fun ReaderImage(url: String, caption: String?) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, Color(0xFFD1D1D6), RoundedCornerShape(8.dp)),
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
             contentScale = ContentScale.FillWidth
         )
         if (caption != null) {
             Text(
                 text = caption,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF636366),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp)
             )
         }
@@ -392,7 +488,7 @@ private fun ReadingSettingsSheet(
                             .clip(CircleShape)
                             .background(
                                 if (selected) MaterialTheme.colorScheme.primary
-                                else Color(0xFFF2F2F7)
+                                else MaterialTheme.colorScheme.surfaceVariant
                             )
                             .clickable { viewModel.setReadingPrefs(prefs.copy(fontSize = size)) },
                         contentAlignment = Alignment.Center
@@ -401,7 +497,8 @@ private fun ReadingSettingsSheet(
                             text = size.toString(),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selected) Color.White else Color(0xFF1C1C1E)
+                                color = if (selected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         )
                     }
@@ -424,7 +521,7 @@ private fun ReadingSettingsSheet(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 if (selected) MaterialTheme.colorScheme.primary
-                                else Color(0xFFF2F2F7)
+                                else MaterialTheme.colorScheme.surfaceVariant
                             )
                             .clickable { viewModel.setReadingPrefs(prefs.copy(font = font)) }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -434,7 +531,7 @@ private fun ReadingSettingsSheet(
                                 Icon(
                                     Icons.Default.Check,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -443,7 +540,8 @@ private fun ReadingSettingsSheet(
                                 text = font.displayName,
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selected) Color.White else Color(0xFF1C1C1E)
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
@@ -461,7 +559,7 @@ private fun ReadingSettingsSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFF8F8FA), RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                     .padding(16.dp)
             ) {
                 Text(
@@ -475,7 +573,7 @@ private fun ReadingSettingsSheet(
                         },
                         lineHeight = (prefs.fontSize * 1.7).sp
                     ),
-                    color = Color(0xFF1C1C1E)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }

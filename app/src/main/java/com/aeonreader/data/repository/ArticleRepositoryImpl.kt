@@ -117,6 +117,7 @@ private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article? {
     return Article(
         url = url,
         title = title,
+        description = deserialized.getOrNull()?.description,
         author = author,
         authorBio = authorBio,
         publicationDate = publicationDate?.let {
@@ -173,6 +174,7 @@ class ArticleRemoteMediator(
                 ArticleSummaryEntity(
                     url = summary.url,
                     title = summary.title,
+                    description = summary.description,
                     author = summary.author,
                     category = summary.category,
                     heroImageUrl = summary.heroImageUrl,

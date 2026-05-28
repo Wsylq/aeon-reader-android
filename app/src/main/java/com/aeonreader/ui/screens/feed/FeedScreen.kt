@@ -226,6 +226,17 @@ fun ArticleCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            if (summary.description != null) {
+                Text(
+                    text = summary.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -273,6 +284,7 @@ private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
     return ArticleSummary(
         url = url,
         title = title,
+        description = description,
         author = author,
         category = category,
         heroImageUrl = heroImageUrl,

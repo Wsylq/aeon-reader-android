@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class ArticleSummaryEntity(
     @PrimaryKey val url: String,
     val title: String,
+    val description: String?,
     val author: String?,
     val category: String?,
     val heroImageUrl: String?,

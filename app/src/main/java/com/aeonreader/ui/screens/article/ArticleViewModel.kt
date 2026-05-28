@@ -92,6 +92,7 @@ class ArticleViewModel @Inject constructor(
                 val summary = com.aeonreader.domain.ArticleSummary(
                     url = state.article.url,
                     title = state.article.title,
+                    description = null,
                     author = state.article.author,
                     category = state.article.category,
                     heroImageUrl = state.article.heroImageUrl,

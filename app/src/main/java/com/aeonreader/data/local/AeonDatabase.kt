@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         ReadingProgressEntity::class,
         RemoteKeyEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AeonDatabase : RoomDatabase() {

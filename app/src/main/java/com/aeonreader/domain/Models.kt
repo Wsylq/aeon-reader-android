@@ -6,6 +6,7 @@ import java.time.LocalDate
 data class ArticleSummary(
     val url: String,
     val title: String,
+    val description: String?,
     val author: String?,
     val category: String?,
     val heroImageUrl: String?,
@@ -16,6 +17,7 @@ data class ArticleSummary(
 data class Article(
     val url: String,
     val title: String,
+    val description: String?,
     val author: String?,
     val authorBio: String?,
     val publicationDate: LocalDate?,
@@ -29,6 +31,7 @@ sealed class ContentBlock {
     data class Paragraph(val text: String) : ContentBlock()
     data class Subheading(val text: String) : ContentBlock()
     data class BlockQuote(val text: String) : ContentBlock()
+    data class PullQuote(val text: String) : ContentBlock()
     data class InlineImage(val url: String, val caption: String?) : ContentBlock()
 }
 
