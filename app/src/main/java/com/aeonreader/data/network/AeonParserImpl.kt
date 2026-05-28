@@ -35,13 +35,13 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 val href = card.attr("href")
                 val url = "https://aeon.co$href"
 
-                val titleEl = card.selectFirst("p font-bold font-serif, h2, h3")
+                val titleEl = card.selectFirst("p.font-bold.font-serif, h2, h3")
                 val title = titleEl?.text()?.ifBlank { null } ?: return@mapNotNull null
 
-                val descEl = card.selectFirst("p.mb-0.text-base")
+                val descEl = card.selectFirst("p.mb-0.text-base.leading-normal")
                 val description = descEl?.text()?.ifBlank { null }
 
-                val authorEl = card.selectFirst("p font-sans, p.text-sm, [class*=author]")
+                val authorEl = card.selectFirst("p.font-sans.text-base, p.text-sm, [class*=author]")
                 val author = authorEl?.text()?.ifBlank { null }
 
                 // fallback: use the largest non-title, non-author text paragraph in the card
