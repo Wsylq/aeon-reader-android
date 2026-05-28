@@ -59,5 +59,6 @@ enum class ReadingFont(val displayName: String) {
 
 data class ReadingPreferences(
     val font: ReadingFont = ReadingFont.SANS,
-    val fontSize: Int = 16
+    val fontSize: Int = 16,
+    val isImmersiveMode: Boolean = false
 )

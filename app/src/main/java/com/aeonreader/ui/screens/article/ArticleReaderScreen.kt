@@ -1,5 +1,6 @@
 package com.aeonreader.ui.screens.article
 
+import android.app.Activity
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -60,6 +62,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.aeonreader.domain.Article
@@ -133,6 +138,19 @@ private fun ArticleReaderContent(
     var showSettings by remember { mutableStateOf(false) }
     val readingPrefs by viewModel.readingPrefs.collectAsState()
 
+    val context = LocalContext.current
+    val window = remember(context) { (context as? Activity)?.window }
+
+    SideEffect {
+        val insetsController = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+        if (readingPrefs.isImmersiveMode) {
+            insetsController?.hide(WindowInsetsCompat.Type.systemBars())
+            insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            insetsController?.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
     val progress by remember {
         derivedStateOf {
             val totalItems = listState.layoutInfo.totalItemsCount
@@ -163,10 +181,12 @@ private fun ArticleReaderContent(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        LinearProgressIndicator(
-            progress = { progress / 100f },
-            modifier = Modifier.fillMaxWidth().height(3.dp),
-        )
+        if (!readingPrefs.isImmersiveMode) {
+            LinearProgressIndicator(
+                progress = { progress / 100f },
+                modifier = Modifier.fillMaxWidth().height(3.dp),
+            )
+        }
 
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().weight(1f)) {
                 item {
@@ -228,11 +248,12 @@ private fun ArticleReaderContent(
                 }
 
                 item {
-                    val context = LocalContext.current
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
+                    if (!readingPrefs.isImmersiveMode) {
+                        val context = LocalContext.current
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
                         IconButton(onClick = onToggleBookmark, modifier = Modifier.size(36.dp)) {
                             Icon(
                                 imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -268,6 +289,7 @@ private fun ArticleReaderContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
                     }
                 }
 
@@ -538,6 +560,52 @@ private fun ReadingSettingsSheet(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { viewModel.setReadingPrefs(prefs.copy(isImmersiveMode = !prefs.isImmersiveMode)) }
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Immersive Mode",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Hide status bar and controls for distraction-free reading",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (prefs.isImmersiveMode) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (prefs.isImmersiveMode) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
