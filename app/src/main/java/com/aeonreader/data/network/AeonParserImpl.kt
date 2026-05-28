@@ -200,7 +200,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
     private fun extractBodyBlocks(doc: Element): List<ContentBlock> {
         val main = doc.selectFirst("main")
         val content = if (main != null) {
-            val sections = main.select(":scope > div")
+            val sections = main.children().filter { it.tagName() == "div" }
             sections.maxByOrNull { it.text().length } ?: main
         } else {
             doc.selectFirst("article") ?: doc
