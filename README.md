@@ -43,3 +43,20 @@ Kotlin, Jetpack Compose, Hilt, Jsoup, OkHttp, Room.
 ## Downloads
 
 APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/releases).
+
+## TODO
+
+- [ ] Line spacing / margins / text alignment settings
+- [x] Immersive full-screen mode (hide status bar + controls)
+- [ ] Reading time estimate on feed cards
+- [ ] Open article in browser
+- [ ] Mark as read/unread
+- [ ] Swipe-to-bookmark on feed
+- [ ] Pull-to-refresh on feed
+- [ ] Category filter / sort on feed
+- [ ] Search bookmarked/cached articles
+- [ ] Export articles as PDF / plain text
+- [ ] OPML export
+- [ ] Text-to-speech (read aloud)
+- [ ] App shortcuts (long-press launcher icon)
+- [ ] Reading themes (sepia, green-tinted paper)
