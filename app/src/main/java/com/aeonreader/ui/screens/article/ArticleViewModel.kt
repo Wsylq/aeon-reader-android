@@ -20,15 +20,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed interface ArticleUiState {
-    data object Loading : ArticleUiState
-    data class Success(
-        val article: Article,
-        val isBookmarked: Boolean,
-        val readingProgress: Float?
-    ) : ArticleUiState
-    data class Error(val message: String) : ArticleUiState
-}
+    sealed interface ArticleUiState {
+        data object Loading : ArticleUiState
+        data class Success(
+            val article: Article,
+            val isBookmarked: Boolean,
+            val readingProgress: Int?
+        ) : ArticleUiState
+        data class Error(val message: String) : ArticleUiState
+    }
 
 @HiltViewModel
 class ArticleViewModel @Inject constructor(
@@ -109,11 +109,12 @@ class ArticleViewModel @Inject constructor(
         }
     }
 
-    fun updateProgress(percent: Float) {
+    fun updateProgress(blockIndex: Int) {
         val state = _uiState.value
         if (state !is ArticleUiState.Success) return
 
-        if (percent >= 95f) {
+        val lastBlock = state.article.bodyBlocks.size - 1
+        if (blockIndex >= lastBlock) {
             viewModelScope.launch {
                 readingProgressRepository.clearProgress(state.article.url)
             }
@@ -123,7 +124,7 @@ class ArticleViewModel @Inject constructor(
         progressSaveJob?.cancel()
         progressSaveJob = viewModelScope.launch {
             delay(2000)
-            readingProgressRepository.saveProgress(state.article.url, percent)
+            readingProgressRepository.saveProgress(state.article.url, blockIndex)
         }
     }
 }

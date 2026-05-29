@@ -46,7 +46,7 @@ data class BookmarkEntity(
 @Entity(tableName = "reading_progress")
 data class ReadingProgressEntity(
     @PrimaryKey val articleUrl: String,
-    val progressPercent: Float,
+    val lastBlockIndex: Int,
     val savedAt: Long
 )
 

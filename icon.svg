@@ -1,7 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
-  <rect width="108" height="108" rx="20" fill="#F4EFE6"/>
-  <path d="M30,80 L40,44 L54,44 L68,80 L58,80 L52,62 L42,62 L36,80 Z" fill="#1E1B1A"/>
-  <path d="M54,44 L54,28 L70,28 L70,38 L54,38" fill="#1E1B1A"/>
-  <!-- broken right leg: the A is missing its bottom right tip -->
-  <rect x="64" y="74" width="8" height="6" fill="#F4EFE6"/>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="240" fill="#14181F"/>
+
+  <!-- Subtle inner shadow -->
+  <rect x="24" y="24" width="976" height="976" rx="216"
+        stroke="rgba(255,255,255,0.04)" stroke-width="2"/>
+
+  <!-- Main Aeon "A" + Book Shape -->
+  <path
+    d="
+      M512 250
+      L290 760
+      H390
+      L450 620
+      H574
+      L634 760
+      H734
+      L512 250
+      Z
+    "
+    fill="#F5F7FA"/>
+
+  <!-- Inner cut for elegant A -->
+  <path
+    d="
+      M512 390
+      L485 455
+      H539
+      L512 390
+      Z
+    "
+    fill="#14181F"/>
+
+  <!-- Book/Page Fold -->
+  <path
+    d="
+      M620 540
+      C660 545 700 570 720 620
+      C690 605 655 600 620 608
+      Z
+    "
+    fill="#C9D2E3"
+    fill-opacity="0.9"/>
+
+  <!-- Crossbar -->
+  <rect x="420" y="545" width="184" height="42" rx="21" fill="#14181F"/>
+
+  <!-- Soft highlight -->
+  <path
+    d="
+      M330 760
+      H694
+    "
+    stroke="rgba(255,255,255,0.08)"
+    stroke-width="8"
+    stroke-linecap="round"/>
 </svg>

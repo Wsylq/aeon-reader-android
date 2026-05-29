@@ -65,12 +65,16 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.aeonreader.domain.Article
 import com.aeonreader.domain.ContentBlock
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
@@ -128,9 +132,9 @@ fun ArticleReaderScreen(
 private fun ArticleReaderContent(
     article: Article,
     isBookmarked: Boolean,
-    initialProgress: Float?,
+    initialProgress: Int?,
     onToggleBookmark: () -> Unit,
-    onProgressUpdate: (Float) -> Unit,
+    onProgressUpdate: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArticleViewModel
 ) {
@@ -151,39 +155,44 @@ private fun ArticleReaderContent(
         }
     }
 
-    val progress by remember {
+    val nonBodyCount = 2
+    val bodyBlocks = article.bodyBlocks
+
+    val currentBlockIndex by remember {
         derivedStateOf {
-            val totalItems = listState.layoutInfo.totalItemsCount
-            if (totalItems == 0) 0f
-            else {
-                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-                if (lastVisible == null) 0f
-                else {
-                    ((lastVisible.index + 1).toFloat() / totalItems.toFloat()) * 100f
-                }
-            }
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            if (lastVisible == null) 0
+            else (lastVisible.index - nonBodyCount).coerceIn(0, maxOf(0, bodyBlocks.size - 1))
         }
     }
 
-    LaunchedEffect(progress) {
-        onProgressUpdate(progress)
+    LaunchedEffect(currentBlockIndex) {
+        onProgressUpdate(currentBlockIndex)
     }
+
+    var highlightedBlockIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(initialProgress) {
-        if (initialProgress != null) {
-            val totalItems = listState.layoutInfo.totalItemsCount
-            if (totalItems > 0) {
-                val targetIndex = ((initialProgress / 100f) * totalItems).toInt()
-                    .coerceIn(0, totalItems - 1)
-                listState.scrollToItem(targetIndex)
-            }
+        if (initialProgress != null && bodyBlocks.isNotEmpty()) {
+            val targetIndex = initialProgress.coerceIn(0, bodyBlocks.size - 1)
+            listState.scrollToItem(targetIndex + nonBodyCount)
+            highlightedBlockIndex = targetIndex
         }
     }
+
+    LaunchedEffect(highlightedBlockIndex) {
+        if (highlightedBlockIndex != null) {
+            delay(3000)
+            highlightedBlockIndex = null
+        }
+    }
+
+
 
     Column(modifier = modifier.fillMaxSize()) {
         if (!readingPrefs.isImmersiveMode) {
             LinearProgressIndicator(
-                progress = { progress / 100f },
+                progress = { if (bodyBlocks.isEmpty()) 0f else (currentBlockIndex + 1).toFloat() / bodyBlocks.size },
                 modifier = Modifier.fillMaxWidth().height(3.dp),
             )
         }
@@ -293,8 +302,12 @@ private fun ArticleReaderContent(
                     }
                 }
 
-                items(article.bodyBlocks) { block ->
-                    ContentBlockItem(block, readingPrefs)
+                itemsIndexed(bodyBlocks) { index, block ->
+                    ContentBlockItem(
+                        block = block,
+                        prefs = readingPrefs,
+                        isHighlighted = highlightedBlockIndex == index
+                    )
                 }
 
                 item {
@@ -312,18 +325,48 @@ private fun ArticleReaderContent(
 }
 
 @Composable
-private fun ContentBlockItem(block: ContentBlock, prefs: ReadingPreferences) {
+private fun ContentBlockItem(
+    block: ContentBlock,
+    prefs: ReadingPreferences,
+    isHighlighted: Boolean = false
+) {
+    val highlightAlpha by animateFloatAsState(
+        targetValue = if (isHighlighted) 1f else 0f,
+        animationSpec = tween(durationMillis = 600),
+        label = "highlight"
+    )
+
+    val bgModifier = if (highlightAlpha > 0f) {
+        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f * highlightAlpha))
+    } else Modifier
+
     when (block) {
-        is ContentBlock.Paragraph -> ReaderParagraph(block.text, prefs)
-        is ContentBlock.Subheading -> ReaderSubheading(block.text, prefs)
-        is ContentBlock.BlockQuote -> ReaderBlockQuote(block.text, prefs)
-        is ContentBlock.PullQuote -> ReaderPullQuote(block.text, prefs)
+        is ContentBlock.Paragraph -> ReaderParagraph(
+            text = block.text,
+            prefs = prefs,
+            modifier = bgModifier
+        )
+        is ContentBlock.Subheading -> ReaderSubheading(
+            text = block.text,
+            prefs = prefs,
+            modifier = bgModifier
+        )
+        is ContentBlock.BlockQuote -> ReaderBlockQuote(
+            text = block.text,
+            prefs = prefs,
+            modifier = bgModifier
+        )
+        is ContentBlock.PullQuote -> ReaderPullQuote(
+            text = block.text,
+            prefs = prefs,
+            modifier = bgModifier
+        )
         is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption)
     }
 }
 
 @Composable
-private fun ReaderParagraph(text: String, prefs: ReadingPreferences) {
+private fun ReaderParagraph(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
@@ -337,12 +380,12 @@ private fun ReaderParagraph(text: String, prefs: ReadingPreferences) {
             letterSpacing = 0.15.sp
         ),
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+        modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
     )
 }
 
 @Composable
-private fun ReaderSubheading(text: String, prefs: ReadingPreferences) {
+private fun ReaderSubheading(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleLarge.copy(
@@ -356,12 +399,12 @@ private fun ReaderSubheading(text: String, prefs: ReadingPreferences) {
             lineHeight = (prefs.fontSize * 1.8).sp
         ),
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
+        modifier = modifier.padding(horizontal = 24.dp, vertical = 20.dp)
     )
 }
 
 @Composable
-private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences) {
+private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
@@ -376,7 +419,7 @@ private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences) {
             letterSpacing = 0.15.sp
         ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 8.dp)
             .background(
@@ -393,7 +436,7 @@ private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences) {
 }
 
 @Composable
-private fun ReaderPullQuote(text: String, prefs: ReadingPreferences) {
+private fun ReaderPullQuote(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
@@ -410,7 +453,7 @@ private fun ReaderPullQuote(text: String, prefs: ReadingPreferences) {
         ),
         color = MaterialTheme.colorScheme.primary,
         textAlign = TextAlign.Center,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 32.dp, vertical = 24.dp)
     )
