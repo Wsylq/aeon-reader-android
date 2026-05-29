@@ -160,9 +160,8 @@ private fun ArticleReaderContent(
 
     val currentBlockIndex by remember {
         derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            if (lastVisible == null) 0
-            else (lastVisible.index - nonBodyCount).coerceIn(0, maxOf(0, bodyBlocks.size - 1))
+            val idx = listState.firstVisibleItemIndex - nonBodyCount
+            idx.coerceIn(0, maxOf(0, bodyBlocks.size - 1))
         }
     }
 
