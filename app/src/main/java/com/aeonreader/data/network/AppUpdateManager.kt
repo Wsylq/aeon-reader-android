@@ -92,7 +92,7 @@ class AppUpdateManager @Inject constructor() {
 
             val uri = Uri.parse(url)
             val request = DownloadManager.Request(uri)
-                .setTitle("Aeon Reader Update")
+                .setTitle("Eon Update")
                 .setDescription("Downloading latest version...")
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
