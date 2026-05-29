@@ -46,9 +46,9 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 
 ## TODO
 
-- [ ] Line spacing / margins / text alignment settings
+- [x] Line spacing / margins / text alignment settings
 - [x] Immersive full-screen mode (hide status bar + controls)
-- [ ] Reading time estimate on feed cards
+- [x] Reading time estimate on feed cards
 - [ ] Open article in browser
 - [ ] Mark as read/unread
 - [ ] Swipe-to-bookmark on feed
@@ -58,5 +58,5 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [ ] Export articles as PDF / plain text
 - [ ] OPML export
 - [ ] Text-to-speech (read aloud)
-- [ ] App shortcuts (long-press launcher icon)
-- [ ] Reading themes (sepia, green-tinted paper)
+- [x] App shortcuts (long-press launcher icon)
+- [x] Reading themes (sepia, green-tinted paper)

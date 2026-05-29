@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
+import com.aeonreader.domain.ReadingTheme
 import com.aeonreader.domain.ThemeOverride
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private val READING_FONT = stringPreferencesKey("reading_font")
         private val READING_FONT_SIZE = intPreferencesKey("reading_font_size")
         private val READING_IMMERSIVE_MODE = booleanPreferencesKey("reading_immersive_mode")
+        private val READING_THEME = stringPreferencesKey("reading_theme")
     }
 
     override val selectedCategory: Flow<String> = context.dataStore.data.map { prefs ->
@@ -46,8 +48,10 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val fontName = prefs[READING_FONT] ?: "SANS"
         val fontSize = prefs[READING_FONT_SIZE] ?: 16
         val immersiveMode = prefs[READING_IMMERSIVE_MODE] ?: false
+        val themeName = prefs[READING_THEME] ?: "DEFAULT"
         val font = try { ReadingFont.valueOf(fontName) } catch (_: Exception) { ReadingFont.SANS }
-        ReadingPreferences(font = font, fontSize = fontSize, isImmersiveMode = immersiveMode)
+        val theme = try { ReadingTheme.valueOf(themeName) } catch (_: Exception) { ReadingTheme.DEFAULT }
+        ReadingPreferences(font = font, fontSize = fontSize, isImmersiveMode = immersiveMode, theme = theme)
     }
 
     override suspend fun setSelectedCategory(category: String) {
@@ -71,6 +75,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             stored[READING_FONT] = prefs.font.name
             stored[READING_FONT_SIZE] = prefs.fontSize
             stored[READING_IMMERSIVE_MODE] = prefs.isImmersiveMode
+            stored[READING_THEME] = prefs.theme.name
         }
     }
 }

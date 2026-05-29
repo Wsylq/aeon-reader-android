@@ -62,6 +62,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.ColorScheme
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -74,9 +76,48 @@ import com.aeonreader.domain.Article
 import com.aeonreader.domain.ContentBlock
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
+import com.aeonreader.domain.ReadingTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
+
+private data class ReaderColors(
+    val background: Color,
+    val text: Color,
+    val textDim: Color,
+    val primary: Color,
+    val surfaceVariant: Color,
+    val outlineVariant: Color
+)
+
+private fun readerColors(theme: ReadingTheme, scheme: ColorScheme): ReaderColors {
+    return when (theme) {
+        ReadingTheme.DEFAULT -> ReaderColors(
+            background = scheme.background,
+            text = scheme.onSurface,
+            textDim = scheme.onSurfaceVariant,
+            primary = scheme.primary,
+            surfaceVariant = scheme.surfaceVariant,
+            outlineVariant = scheme.outlineVariant
+        )
+        ReadingTheme.SEPIA -> ReaderColors(
+            background = Color(0xFFF7F3EB),
+            text = Color(0xFF3D3029),
+            textDim = Color(0xFF7A6B5F),
+            primary = Color(0xFF8B4513),
+            surfaceVariant = Color(0xFFEDE4D5),
+            outlineVariant = Color(0xFFD4C8B8)
+        )
+        ReadingTheme.GREEN -> ReaderColors(
+            background = Color(0xFFF0F4EF),
+            text = Color(0xFF2D3D2D),
+            textDim = Color(0xFF5A6D5A),
+            primary = Color(0xFF3D6B3D),
+            surfaceVariant = Color(0xFFDEE5DD),
+            outlineVariant = Color(0xFFC4D0C3)
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,6 +196,9 @@ private fun ArticleReaderContent(
         }
     }
 
+    val scheme = MaterialTheme.colorScheme
+    val colors = remember(readingPrefs.theme) { readerColors(readingPrefs.theme, scheme) }
+
     val nonBodyCount = 2
     val bodyBlocks = article.bodyBlocks
 
@@ -188,11 +232,13 @@ private fun ArticleReaderContent(
 
 
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         if (!readingPrefs.isImmersiveMode) {
             LinearProgressIndicator(
                 progress = { if (bodyBlocks.isEmpty()) 0f else (currentBlockIndex + 1).toFloat() / bodyBlocks.size },
                 modifier = Modifier.fillMaxWidth().height(3.dp),
+                color = colors.primary,
+                trackColor = colors.surfaceVariant,
             )
         }
 
@@ -305,6 +351,7 @@ private fun ArticleReaderContent(
                     ContentBlockItem(
                         block = block,
                         prefs = readingPrefs,
+                        colors = colors,
                         isHighlighted = highlightedBlockIndex == index
                     )
                 }
@@ -327,6 +374,7 @@ private fun ArticleReaderContent(
 private fun ContentBlockItem(
     block: ContentBlock,
     prefs: ReadingPreferences,
+    colors: ReaderColors,
     isHighlighted: Boolean = false
 ) {
     val highlightAlpha by animateFloatAsState(
@@ -336,28 +384,32 @@ private fun ContentBlockItem(
     )
 
     val bgModifier = if (highlightAlpha > 0f) {
-        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f * highlightAlpha))
+        Modifier.background(colors.primary.copy(alpha = 0.12f * highlightAlpha))
     } else Modifier
 
     when (block) {
         is ContentBlock.Paragraph -> ReaderParagraph(
             text = block.text,
             prefs = prefs,
+            colors = colors,
             modifier = bgModifier
         )
         is ContentBlock.Subheading -> ReaderSubheading(
             text = block.text,
             prefs = prefs,
+            colors = colors,
             modifier = bgModifier
         )
         is ContentBlock.BlockQuote -> ReaderBlockQuote(
             text = block.text,
             prefs = prefs,
+            colors = colors,
             modifier = bgModifier
         )
         is ContentBlock.PullQuote -> ReaderPullQuote(
             text = block.text,
             prefs = prefs,
+            colors = colors,
             modifier = bgModifier
         )
         is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption)
@@ -365,7 +417,7 @@ private fun ContentBlockItem(
 }
 
 @Composable
-private fun ReaderParagraph(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
+private fun ReaderParagraph(text: String, prefs: ReadingPreferences, colors: ReaderColors, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
@@ -378,13 +430,13 @@ private fun ReaderParagraph(text: String, prefs: ReadingPreferences, modifier: M
             lineHeight = (prefs.fontSize * 1.7).sp,
             letterSpacing = 0.15.sp
         ),
-        color = MaterialTheme.colorScheme.onSurface,
+        color = colors.text,
         modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
     )
 }
 
 @Composable
-private fun ReaderSubheading(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
+private fun ReaderSubheading(text: String, prefs: ReadingPreferences, colors: ReaderColors, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleLarge.copy(
@@ -397,13 +449,13 @@ private fun ReaderSubheading(text: String, prefs: ReadingPreferences, modifier: 
             fontWeight = FontWeight.SemiBold,
             lineHeight = (prefs.fontSize * 1.8).sp
         ),
-        color = MaterialTheme.colorScheme.onSurface,
+        color = colors.text,
         modifier = modifier.padding(horizontal = 24.dp, vertical = 20.dp)
     )
 }
 
 @Composable
-private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
+private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences, colors: ReaderColors, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
@@ -417,17 +469,17 @@ private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences, modifier: 
             lineHeight = (prefs.fontSize * 1.7).sp,
             letterSpacing = 0.15.sp
         ),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = colors.textDim,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 8.dp)
             .background(
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = colors.surfaceVariant,
                 shape = RoundedCornerShape(6.dp)
             )
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = colors.outlineVariant,
                 shape = RoundedCornerShape(6.dp)
             )
             .padding(16.dp)
@@ -435,7 +487,7 @@ private fun ReaderBlockQuote(text: String, prefs: ReadingPreferences, modifier: 
 }
 
 @Composable
-private fun ReaderPullQuote(text: String, prefs: ReadingPreferences, modifier: Modifier = Modifier) {
+private fun ReaderPullQuote(text: String, prefs: ReadingPreferences, colors: ReaderColors, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge.copy(
@@ -450,7 +502,7 @@ private fun ReaderPullQuote(text: String, prefs: ReadingPreferences, modifier: M
             lineHeight = (prefs.fontSize * 1.6).sp,
             letterSpacing = 0.5.sp
         ),
-        color = MaterialTheme.colorScheme.primary,
+        color = colors.primary,
         textAlign = TextAlign.Center,
         modifier = modifier
             .fillMaxWidth()
@@ -647,7 +699,72 @@ private fun ReadingSettingsSheet(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Theme", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
             Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ReadingTheme.entries.forEach { theme ->
+                    val selected = prefs.theme == theme
+                    val colors = readerColors(theme, MaterialTheme.colorScheme)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { viewModel.setReadingPrefs(prefs.copy(theme = theme)) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (selected) MaterialTheme.colorScheme.primary
+                                        else colors.background,
+                                        CircleShape
+                                    )
+                                    .then(
+                                        if (!selected) Modifier.border(
+                                            1.5.dp,
+                                            MaterialTheme.colorScheme.outlineVariant,
+                                            CircleShape
+                                        ) else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selected) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = theme.displayName,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                ),
+                                color = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -57,8 +57,15 @@ enum class ReadingFont(val displayName: String) {
     MONO("Monospace")
 }
 
+enum class ReadingTheme(val displayName: String) {
+    DEFAULT("Default"),
+    SEPIA("Sepia"),
+    GREEN("Green")
+}
+
 data class ReadingPreferences(
     val font: ReadingFont = ReadingFont.SANS,
     val fontSize: Int = 16,
-    val isImmersiveMode: Boolean = false
+    val isImmersiveMode: Boolean = false,
+    val theme: ReadingTheme = ReadingTheme.DEFAULT
 )

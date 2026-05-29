@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Eon</string>
+    <string name="shortcut_feed">Feed</string>
+    <string name="shortcut_feed_long">Open feed</string>
+    <string name="shortcut_search">Search</string>
+    <string name="shortcut_search_long">Search articles</string>
+    <string name="shortcut_bookmarks">Bookmarks</string>
+    <string name="shortcut_bookmarks_long">View bookmarks</string>
 </resources>

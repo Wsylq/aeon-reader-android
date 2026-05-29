@@ -1,6 +1,7 @@
 package com.aeonreader
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -16,6 +17,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.aeonreader.data.network.AppUpdateManager
 import com.aeonreader.data.network.UpdateInfo
 import com.aeonreader.ui.navigation.AeonNavHost
@@ -39,11 +42,44 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AeonTheme {
-                androidx.compose.foundation.layout.                Box(modifier = Modifier.fillMaxSize()) {
-                    AeonNavHost()
+                val navController = rememberNavController()
+                HandleShortcutIntent(navController)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AeonNavHost(navController = navController)
                     UpdateDialogHost(context = this@MainActivity, updateManager = updateManager)
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+}
+
+@Composable
+private fun HandleShortcutIntent(navController: NavHostController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? MainActivity ?: return
+    val intent = activity.intent ?: return
+
+    LaunchedEffect(intent.data) {
+        val destination = when (intent.data?.toString()) {
+            "eon://search" -> "search"
+            "eon://bookmarks" -> "bookmarks"
+            else -> null
+        }
+        if (destination != null) {
+            navController.navigate(destination) {
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+            // Prevent re-navigation on recomposition
+            activity.intent?.data = null
         }
     }
 }

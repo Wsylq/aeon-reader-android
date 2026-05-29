@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="feed"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_feed"
+        android:shortcutShortLabel="@string/shortcut_feed"
+        android:shortcutLongLabel="@string/shortcut_feed_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="${applicationId}"
+            android:targetClass="com.aeonreader.MainActivity"
+            android:data="eon://feed" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_search"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="${applicationId}"
+            android:targetClass="com.aeonreader.MainActivity"
+            android:data="eon://search" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="bookmarks"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_bookmarks"
+        android:shortcutShortLabel="@string/shortcut_bookmarks"
+        android:shortcutLongLabel="@string/shortcut_bookmarks_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="${applicationId}"
+            android:targetClass="com.aeonreader.MainActivity"
+            android:data="eon://bookmarks" />
+    </shortcut>
+</shortcuts>
