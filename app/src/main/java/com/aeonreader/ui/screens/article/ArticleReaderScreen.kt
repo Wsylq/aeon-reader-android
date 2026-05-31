@@ -267,7 +267,7 @@ private fun ArticleReaderContent(
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
                             ),
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colors.text
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -279,22 +279,22 @@ private fun ArticleReaderContent(
                                     fontWeight = FontWeight.Normal,
                                     lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = colors.textDim
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             article.author?.let {
-                                Text(text = "By $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = "By $it", style = MaterialTheme.typography.bodyMedium, color = colors.textDim)
                             }
                             article.publicationDate?.let {
                                 if (article.author != null) {
-                                    Text(text = " · ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(text = " · ", color = colors.textDim)
                                 }
-                                Text(text = it.toString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = it.toString(), style = MaterialTheme.typography.bodyMedium, color = colors.textDim)
                             }
-                            Text(text = " · ${ceil((article.wordCount / 200.0)).toInt()} min read", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = " · ${ceil((article.wordCount / 200.0)).toInt()} min read", style = MaterialTheme.typography.bodyMedium, color = colors.textDim)
                         }
 
                         Spacer(modifier = Modifier.height(2.dp))
@@ -312,7 +312,7 @@ private fun ArticleReaderContent(
                             Icon(
                                 imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = colors.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -331,7 +331,7 @@ private fun ArticleReaderContent(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = colors.textDim,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -340,7 +340,7 @@ private fun ArticleReaderContent(
                             Text(
                                 text = "Aa",
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = colors.textDim
                             )
                         }
                     }
@@ -412,7 +412,7 @@ private fun ContentBlockItem(
             colors = colors,
             modifier = bgModifier
         )
-        is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption)
+        is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption, colors)
     }
 }
 
@@ -511,7 +511,7 @@ private fun ReaderPullQuote(text: String, prefs: ReadingPreferences, colors: Rea
 }
 
 @Composable
-private fun ReaderImage(url: String, caption: String?) {
+private fun ReaderImage(url: String, caption: String?, colors: ReaderColors) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -524,14 +524,14 @@ private fun ReaderImage(url: String, caption: String?) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                .border(1.dp, colors.outlineVariant, RoundedCornerShape(8.dp)),
             contentScale = ContentScale.FillWidth
         )
         if (caption != null) {
             Text(
                 text = caption,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textDim,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp)
             )
         }
