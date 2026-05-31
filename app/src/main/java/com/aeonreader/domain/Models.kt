@@ -60,7 +60,8 @@ enum class ReadingFont(val displayName: String) {
 enum class ReadingTheme(val displayName: String) {
     DEFAULT("Default"),
     SEPIA("Sepia"),
-    GREEN("Green")
+    GREEN("Green"),
+    AEON("Aeon")
 }
 
 data class ReadingPreferences(

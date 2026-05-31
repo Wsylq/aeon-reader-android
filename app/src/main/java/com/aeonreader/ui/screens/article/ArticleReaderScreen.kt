@@ -116,6 +116,14 @@ fun readerColors(theme: ReadingTheme, scheme: ColorScheme): ReaderColors {
             surfaceVariant = Color(0xFFDCE4DA),
             outlineVariant = Color(0xFFC0CEBE)
         )
+        ReadingTheme.AEON -> ReaderColors(
+            background = Color(0xFF1A1D23),
+            text = Color(0xFFEBE7DF),
+            textDim = Color(0xFF9E9A92),
+            primary = Color(0xFFD4A574),
+            surfaceVariant = Color(0xFF282A2E),
+            outlineVariant = Color(0xFF3A3C40)
+        )
     }
 }
 
@@ -771,10 +779,11 @@ private fun ReadingSettingsSheet(
             Text("Preview", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
             Spacer(modifier = Modifier.height(8.dp))
 
+            val previewColors = readerColors(prefs.theme, MaterialTheme.colorScheme)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    .background(previewColors.background, RoundedCornerShape(8.dp))
                     .padding(16.dp)
             ) {
                 Text(
@@ -788,7 +797,7 @@ private fun ReadingSettingsSheet(
                         },
                         lineHeight = (prefs.fontSize * 1.7).sp
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = previewColors.text
                 )
             }
         }
