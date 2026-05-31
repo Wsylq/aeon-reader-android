@@ -16,12 +16,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -46,6 +50,7 @@ import java.time.Instant
 @Composable
 fun FeedScreen(
     onArticleClick: (String) -> Unit,
+    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
@@ -76,6 +81,7 @@ fun FeedScreen(
             FeedContent(
                 state = state,
                 onArticleClick = onArticleClick,
+                onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
                 onRefresh = { viewModel.refresh() },
                 modifier = modifier
@@ -89,6 +95,7 @@ fun FeedScreen(
 private fun FeedContent(
     state: FeedUiState.Success,
     onArticleClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
@@ -104,12 +111,27 @@ private fun FeedContent(
             modifier = Modifier.fillMaxSize()
         ) {
             item {
-                CategoryChipRow(
-                    categories = state.categories,
-                    selectedCategory = state.selectedCategory,
-                    onCategorySelect = onCategorySelect,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CategoryChipRow(
+                        categories = state.categories,
+                        selectedCategory = state.selectedCategory,
+                        onCategorySelect = onCategorySelect,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
+                }
             }
 
             items(pagingItems.itemCount) { index ->

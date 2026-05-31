@@ -81,7 +81,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
-private data class ReaderColors(
+data class ReaderColors(
     val background: Color,
     val text: Color,
     val textDim: Color,
@@ -90,7 +90,7 @@ private data class ReaderColors(
     val outlineVariant: Color
 )
 
-private fun readerColors(theme: ReadingTheme, scheme: ColorScheme): ReaderColors {
+fun readerColors(theme: ReadingTheme, scheme: ColorScheme): ReaderColors {
     return when (theme) {
         ReadingTheme.DEFAULT -> ReaderColors(
             background = scheme.background,
@@ -101,20 +101,20 @@ private fun readerColors(theme: ReadingTheme, scheme: ColorScheme): ReaderColors
             outlineVariant = scheme.outlineVariant
         )
         ReadingTheme.SEPIA -> ReaderColors(
-            background = Color(0xFFF7F3EB),
-            text = Color(0xFF3D3029),
-            textDim = Color(0xFF7A6B5F),
-            primary = Color(0xFF8B4513),
-            surfaceVariant = Color(0xFFEDE4D5),
-            outlineVariant = Color(0xFFD4C8B8)
+            background = Color(0xFFF5F0E8),
+            text = Color(0xFF241810),
+            textDim = Color(0xFF5C4A3A),
+            primary = Color(0xFF7A3B10),
+            surfaceVariant = Color(0xFFEBE0D0),
+            outlineVariant = Color(0xFFD4C4B0)
         )
         ReadingTheme.GREEN -> ReaderColors(
-            background = Color(0xFFF0F4EF),
-            text = Color(0xFF2D3D2D),
-            textDim = Color(0xFF5A6D5A),
-            primary = Color(0xFF3D6B3D),
-            surfaceVariant = Color(0xFFDEE5DD),
-            outlineVariant = Color(0xFFC4D0C3)
+            background = Color(0xFFEDF2EB),
+            text = Color(0xFF142414),
+            textDim = Color(0xFF3D523D),
+            primary = Color(0xFF2D5A2D),
+            surfaceVariant = Color(0xFFDCE4DA),
+            outlineVariant = Color(0xFFC0CEBE)
         )
     }
 }

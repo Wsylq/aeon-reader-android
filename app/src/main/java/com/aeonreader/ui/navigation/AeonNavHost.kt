@@ -8,7 +8,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -27,6 +29,7 @@ import com.aeonreader.ui.screens.article.ArticleReaderScreen
 import com.aeonreader.ui.screens.bookmarks.BookmarksScreen
 import com.aeonreader.ui.screens.feed.FeedScreen
 import com.aeonreader.ui.screens.search.SearchScreen
+import com.aeonreader.ui.screens.settings.SettingsScreen
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -49,11 +52,13 @@ fun AeonNavHost(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val isArticleReader = currentDestination?.route?.startsWith("article") == true
+    val isSettings = currentDestination?.route == Screen.Settings.route
+    val showBottomNav = !isArticleReader && !isSettings
 
     Scaffold(
         bottomBar = {
             AnimatedVisibility(
-                visible = !isArticleReader,
+                visible = showBottomNav,
                 enter = slideInVertically(initialOffsetY = { it }),
                 exit = slideOutVertically(targetOffsetY = { it })
             ) {
@@ -94,6 +99,9 @@ fun AeonNavHost(
                 FeedScreen(
                     onArticleClick = { url ->
                         navController.navigate(Screen.ArticleReader.createRoute(url))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
@@ -111,6 +119,12 @@ fun AeonNavHost(
                     onArticleClick = { url ->
                         navController.navigate(Screen.ArticleReader.createRoute(url))
                     }
+                )
+            }
+
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
 
