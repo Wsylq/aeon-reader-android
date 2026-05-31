@@ -178,7 +178,14 @@ fun SettingsScreen(
                                 else colors.outlineVariant,
                                 shape = RoundedCornerShape(10.dp)
                             )
-                            .clickable { viewModel.setReadingPrefs(prefs.copy(theme = theme)) }
+                            .clickable {
+                                val newPrefs = if (theme == ReadingTheme.AEON) {
+                                    prefs.copy(theme = theme, font = ReadingFont.SERIF, fontSize = 18)
+                                } else {
+                                    prefs.copy(theme = theme)
+                                }
+                                viewModel.setReadingPrefs(newPrefs)
+                            }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {

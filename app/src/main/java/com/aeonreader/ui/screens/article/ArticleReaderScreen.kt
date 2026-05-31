@@ -55,11 +55,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
@@ -271,22 +274,40 @@ private fun ArticleReaderContent(
                     ) {
                         Text(
                             text = article.title,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
-                            ),
+                            style = if (readingPrefs.theme == ReadingTheme.AEON) {
+                                MaterialTheme.typography.headlineMedium.copy(
+                                    fontFamily = FontFamily.Serif,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 32.sp,
+                                    lineHeight = 36.sp
+                                )
+                            } else {
+                                MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
+                                )
+                            },
                             color = colors.text
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(if (readingPrefs.theme == ReadingTheme.AEON) 24.dp else 8.dp))
 
                         if (article.description != null) {
                             Text(
                                 text = article.description,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontWeight = FontWeight.Normal,
-                                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
-                                ),
+                                style = if (readingPrefs.theme == ReadingTheme.AEON) {
+                                    MaterialTheme.typography.bodyLarge.copy(
+                                        fontFamily = FontFamily.Serif,
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 18.sp,
+                                        lineHeight = 24.sp
+                                    )
+                                } else {
+                                    MaterialTheme.typography.bodyLarge.copy(
+                                        fontWeight = FontWeight.Normal,
+                                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
+                                    )
+                                },
                                 color = colors.textDim
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -360,7 +381,9 @@ private fun ArticleReaderContent(
                         block = block,
                         prefs = readingPrefs,
                         colors = colors,
-                        isHighlighted = highlightedBlockIndex == index
+                        isHighlighted = highlightedBlockIndex == index,
+                        isFirstParagraph = index == 0 && readingPrefs.theme == ReadingTheme.AEON,
+                        theme = readingPrefs.theme
                     )
                 }
 
@@ -383,7 +406,9 @@ private fun ContentBlockItem(
     block: ContentBlock,
     prefs: ReadingPreferences,
     colors: ReaderColors,
-    isHighlighted: Boolean = false
+    isHighlighted: Boolean = false,
+    isFirstParagraph: Boolean = false,
+    theme: ReadingTheme = ReadingTheme.DEFAULT
 ) {
     val highlightAlpha by animateFloatAsState(
         targetValue = if (isHighlighted) 1f else 0f,
@@ -400,7 +425,9 @@ private fun ContentBlockItem(
             text = block.text,
             prefs = prefs,
             colors = colors,
-            modifier = bgModifier
+            modifier = bgModifier,
+            isFirstParagraph = isFirstParagraph,
+            theme = theme
         )
         is ContentBlock.Subheading -> ReaderSubheading(
             text = block.text,
@@ -425,22 +452,60 @@ private fun ContentBlockItem(
 }
 
 @Composable
-private fun ReaderParagraph(text: String, prefs: ReadingPreferences, colors: ReaderColors, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge.copy(
-            fontSize = prefs.fontSize.sp,
-            fontFamily = when (prefs.font) {
-                ReadingFont.SANS -> FontFamily.SansSerif
-                ReadingFont.SERIF -> FontFamily.Serif
-                ReadingFont.MONO -> FontFamily.Monospace
-            },
-            lineHeight = (prefs.fontSize * 1.7).sp,
-            letterSpacing = 0.15.sp
-        ),
-        color = colors.text,
-        modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
-    )
+private fun ReaderParagraph(
+    text: String,
+    prefs: ReadingPreferences,
+    colors: ReaderColors,
+    modifier: Modifier = Modifier,
+    isFirstParagraph: Boolean = false,
+    theme: ReadingTheme = ReadingTheme.DEFAULT
+) {
+    if (isFirstParagraph && text.isNotEmpty()) {
+        val annotatedText = buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    fontSize = (prefs.fontSize * 2.4).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.text
+                )
+            ) {
+                append(text.first().toString())
+            }
+            withStyle(SpanStyle(color = colors.text)) {
+                append(text.drop(1))
+            }
+        }
+        Text(
+            text = annotatedText,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = prefs.fontSize.sp,
+                fontFamily = when (prefs.font) {
+                    ReadingFont.SANS -> FontFamily.SansSerif
+                    ReadingFont.SERIF -> FontFamily.Serif
+                    ReadingFont.MONO -> FontFamily.Monospace
+                },
+                lineHeight = (prefs.fontSize * 1.7).sp,
+                letterSpacing = 0.15.sp
+            ),
+            modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+        )
+    } else {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = prefs.fontSize.sp,
+                fontFamily = when (prefs.font) {
+                    ReadingFont.SANS -> FontFamily.SansSerif
+                    ReadingFont.SERIF -> FontFamily.Serif
+                    ReadingFont.MONO -> FontFamily.Monospace
+                },
+                lineHeight = (prefs.fontSize * 1.7).sp,
+                letterSpacing = 0.15.sp
+            ),
+            color = colors.text,
+            modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+        )
+    }
 }
 
 @Composable
@@ -723,7 +788,14 @@ private fun ReadingSettingsSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { viewModel.setReadingPrefs(prefs.copy(theme = theme)) }
+                            .clickable {
+                                val newPrefs = if (theme == ReadingTheme.AEON) {
+                                    prefs.copy(theme = theme, font = ReadingFont.SERIF, fontSize = 18)
+                                } else {
+                                    prefs.copy(theme = theme)
+                                }
+                                viewModel.setReadingPrefs(newPrefs)
+                            }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
