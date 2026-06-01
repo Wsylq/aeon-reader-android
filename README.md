@@ -50,7 +50,7 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [x] Immersive full-screen mode (hide status bar + controls)
 - [x] Reading time estimate on feed cards
 - [ ] Open article in browser
-- [ ] Mark as read/unread
+- [ ] <s>Mark as read/unread </s>
 - [ ] Swipe-to-bookmark on feed
 - [ ] Pull-to-refresh on feed
 - [ ] Category filter / sort on feed
