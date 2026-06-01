@@ -2,6 +2,8 @@ package com.aeonreader.data.local
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,6 +15,26 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `word_definitions` (
+                    `word` TEXT NOT NULL,
+                    `definition` TEXT NOT NULL,
+                    `cachedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`word`)
+                )"""
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `highlighted_words` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `articleUrl` TEXT NOT NULL,
+                    `word` TEXT NOT NULL
+                )"""
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AeonDatabase {
@@ -20,7 +42,8 @@ object DatabaseModule {
             context,
             AeonDatabase::class.java,
             "aeon_reader.db"
-        ).fallbackToDestructiveMigration()
+        ).addMigrations(MIGRATION_3_4)
+            .fallbackToDestructiveMigration()
             .build()
     }
 

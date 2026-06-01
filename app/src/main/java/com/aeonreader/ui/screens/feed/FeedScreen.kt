@@ -134,7 +134,7 @@ private fun FeedContent(
                 }
             }
 
-            items(pagingItems.itemCount) { index ->
+            items(pagingItems.itemCount, key = { index -> pagingItems[index]?.url ?: index }) { index ->
                 pagingItems[index]?.let { entity ->
                     ArticleCard(
                         summary = entity.toArticleSummary(),

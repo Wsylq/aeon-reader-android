@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -83,7 +84,7 @@ class FeedViewModel @Inject constructor(
                 articleRepository.observeCachedArticleUrls()
             ) { isOnline, urls ->
                 Pair(!isOnline, urls)
-            }.collect { (offline, urls) ->
+            }.distinctUntilChanged().collect { (offline, urls) ->
                 isOffline = offline
                 cachedUrls = urls
                 emitCurrentState()

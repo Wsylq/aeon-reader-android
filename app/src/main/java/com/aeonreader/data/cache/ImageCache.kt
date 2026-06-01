@@ -12,11 +12,10 @@ import javax.inject.Singleton
 
 @Singleton
 class ImageCache @Inject constructor(
-    @ApplicationContext private val context: Context,
-    client: OkHttpClient
+    @ApplicationContext private val context: Context
 ) {
     private val cacheDir: File = File(context.cacheDir, "article_images").also { it.mkdirs() }
-    private val imageClient = client.newBuilder()
+    private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
@@ -29,7 +28,7 @@ class ImageCache @Inject constructor(
     fun cacheImage(url: String): File? {
         try {
             val request = Request.Builder().url(url).build()
-            val response = imageClient.newCall(request).execute()
+            val response = client.newCall(request).execute()
             if (!response.isSuccessful) return null
             val file = File(cacheDir, hash(url))
             response.body?.byteStream()?.use { input ->

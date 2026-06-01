@@ -8,14 +8,18 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WordService @Inject constructor(
-    private val articleDao: ArticleDao,
-    private val client: OkHttpClient
+    private val articleDao: ArticleDao
 ) {
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
 
     suspend fun getDefinition(word: String): String {
         if (word.isBlank()) return "No word selected"
@@ -29,6 +33,7 @@ class WordService @Inject constructor(
                 val request = Request.Builder()
                     .url("https://api.dictionaryapi.dev/api/v2/entries/en/$encoded")
                     .header("User-Agent", "Eon/0.10 (Android; ae-on-reader)")
+                    .header("Accept", "application/json")
                     .build()
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) {
