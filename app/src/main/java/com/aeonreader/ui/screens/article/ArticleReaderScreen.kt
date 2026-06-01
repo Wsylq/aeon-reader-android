@@ -223,6 +223,7 @@ private fun ArticleReaderContent(
             idx.coerceIn(0, maxOf(0, bodyBlocks.size - 1))
         }
     }
+    val isAtEnd by remember { derivedStateOf { !listState.canScrollForward } }
 
     LaunchedEffect(currentBlockIndex) {
         onProgressUpdate(currentBlockIndex)
@@ -273,7 +274,11 @@ private fun ArticleReaderContent(
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         if (!readingPrefs.isImmersiveMode) {
             LinearProgressIndicator(
-                progress = { if (bodyBlocks.isEmpty()) 0f else (currentBlockIndex + 1).toFloat() / bodyBlocks.size },
+                progress = {
+                    if (bodyBlocks.isEmpty()) 0f
+                    else if (isAtEnd) 1f
+                    else (currentBlockIndex + 1).toFloat() / bodyBlocks.size
+                },
                 modifier = Modifier.fillMaxWidth().height(3.dp),
                 color = colors.primary,
                 trackColor = colors.surfaceVariant,
