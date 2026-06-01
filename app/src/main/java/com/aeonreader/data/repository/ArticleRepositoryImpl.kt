@@ -17,6 +17,7 @@ import com.aeonreader.data.network.AeonScraper
 import com.aeonreader.data.network.NetworkMonitor
 import com.aeonreader.domain.Article
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -109,6 +110,9 @@ class ArticleRepositoryImpl @Inject constructor(
     }
 
     override fun observeNetworkStatus(): Flow<Boolean> = networkMonitor.networkStatus
+
+    override fun observeCachedArticleUrls(): Flow<Set<String>> =
+        articleDao.getCachedArticleUrls().map { it.toSet() }
 }
 
 private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article? {

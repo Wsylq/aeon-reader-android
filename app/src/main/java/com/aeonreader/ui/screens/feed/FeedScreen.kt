@@ -139,7 +139,7 @@ private fun FeedContent(
                     ArticleCard(
                         summary = entity.toArticleSummary(),
                         onClick = { onArticleClick(entity.url) },
-                        showCachedBadge = state.isOffline
+                        isOfflineAvailable = state.isOffline && state.cachedArticleUrls.contains(entity.url)
                     )
                 }
             }
@@ -215,7 +215,7 @@ fun CategoryChipRow(
 fun ArticleCard(
     summary: ArticleSummary,
     onClick: () -> Unit,
-    showCachedBadge: Boolean = false,
+    isOfflineAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -290,11 +290,12 @@ fun ArticleCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (showCachedBadge && summary.cachedAt != null) {
+                if (summary.cachedAt != null) {
                     Text(
-                        text = "Cached",
+                        text = if (isOfflineAvailable) "Offline" else "Cached",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (isOfflineAvailable) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

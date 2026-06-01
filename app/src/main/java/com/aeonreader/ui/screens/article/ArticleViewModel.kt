@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.net.UnknownHostException
 import javax.inject.Inject
 
     sealed interface ArticleUiState {
@@ -76,9 +77,11 @@ class ArticleViewModel @Inject constructor(
                             readingProgress = progress
                         )
                     } else {
-                        _uiState.value = ArticleUiState.Error(
-                            error.message ?: "Failed to load article"
-                        )
+                        val friendlyMessage = when {
+                            error is UnknownHostException -> "No internet connection.\nDownload articles while online to read them offline."
+                            else -> "Something went wrong.\nPlease try again."
+                        }
+                        _uiState.value = ArticleUiState.Error(friendlyMessage)
                     }
                 }
             )

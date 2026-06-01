@@ -37,4 +37,7 @@ interface ArticleDao {
 
     @Query("SELECT COALESCE(SUM(sizeBytes), 0) FROM articles")
     suspend fun getTotalCacheSize(): Long
+
+    @Query("SELECT url FROM articles")
+    fun getCachedArticleUrls(): kotlinx.coroutines.flow.Flow<List<String>>
 }

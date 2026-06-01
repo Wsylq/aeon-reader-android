@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,7 +23,8 @@ sealed interface FeedUiState {
         val articles: Flow<PagingData<ArticleSummaryEntity>>,
         val categories: List<String>,
         val selectedCategory: String,
-        val isOffline: Boolean
+        val isOffline: Boolean,
+        val cachedArticleUrls: Set<String> = emptySet()
     ) : FeedUiState
     data class Error(val message: String) : FeedUiState
 }
@@ -40,6 +42,7 @@ class FeedViewModel @Inject constructor(
     private var selectedCategory: String = "all"
     private var isOffline: Boolean = false
     private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
+    private var cachedUrls: Set<String> = emptySet()
 
     init {
         loadInitial()
@@ -75,12 +78,17 @@ class FeedViewModel @Inject constructor(
         ).cachedIn(viewModelScope)
 
         viewModelScope.launch {
-            articleRepository.observeNetworkStatus().collect { isOnline ->
-                isOffline = !isOnline
+            combine(
+                articleRepository.observeNetworkStatus(),
+                articleRepository.observeCachedArticleUrls()
+            ) { isOnline, urls ->
+                Pair(!isOnline, urls)
+            }.collect { (offline, urls) ->
+                isOffline = offline
+                cachedUrls = urls
+                emitCurrentState()
             }
         }
-
-        emitCurrentState()
     }
 
     private fun emitCurrentState() {
@@ -90,7 +98,8 @@ class FeedViewModel @Inject constructor(
                 articles = flow,
                 categories = categories,
                 selectedCategory = selectedCategory,
-                isOffline = isOffline
+                isOffline = isOffline,
+                cachedArticleUrls = cachedUrls
             )
         } else {
             _uiState.value = FeedUiState.Loading

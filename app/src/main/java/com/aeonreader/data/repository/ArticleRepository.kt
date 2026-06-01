@@ -11,4 +11,5 @@ interface ArticleRepository {
     suspend fun getCachedArticle(url: String): Article?
     suspend fun getCategories(): Result<List<String>>
     fun observeNetworkStatus(): Flow<Boolean>
+    fun observeCachedArticleUrls(): Flow<Set<String>>
 }
