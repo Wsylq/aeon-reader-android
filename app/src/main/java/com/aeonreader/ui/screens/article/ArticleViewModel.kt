@@ -35,6 +35,11 @@ import javax.inject.Inject
         data class Error(val message: String) : ArticleUiState
     }
 
+    sealed interface DefinitionState {
+        data class Loading(val word: String) : DefinitionState
+        data class Result(val word: String, val definition: String) : DefinitionState
+    }
+
 @HiltViewModel
 class ArticleViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
@@ -49,8 +54,8 @@ class ArticleViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ArticleUiState>(ArticleUiState.Loading)
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
-    private val _definition = MutableStateFlow<Pair<String, String>?>(null)
-    val definition: StateFlow<Pair<String, String>?> = _definition.asStateFlow()
+    private val _definition = MutableStateFlow<DefinitionState?>(null)
+    val definition: StateFlow<DefinitionState?> = _definition.asStateFlow()
 
     private val _highlightedWords = MutableStateFlow<Set<String>>(emptySet())
     val highlightedWords: StateFlow<Set<String>> = _highlightedWords.asStateFlow()
@@ -148,8 +153,9 @@ class ArticleViewModel @Inject constructor(
 
     fun lookupWord(word: String) {
         viewModelScope.launch {
+            _definition.value = DefinitionState.Loading(word)
             val definition = wordService.getDefinition(word)
-            _definition.value = word to definition
+            _definition.value = DefinitionState.Result(word, definition)
         }
     }
 

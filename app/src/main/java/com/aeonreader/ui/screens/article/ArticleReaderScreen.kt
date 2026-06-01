@@ -44,7 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -72,18 +71,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.ColorScheme
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import android.graphics.RenderEffect
-import android.graphics.Shader
 import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.platform.LocalView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.domain.Article
@@ -92,6 +89,7 @@ import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ReadingTheme
 import com.aeonreader.ui.components.CachedAsyncImage
+import com.aeonreader.ui.screens.article.DefinitionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
@@ -255,26 +253,10 @@ private fun ArticleReaderContent(
     }
 
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
-    val rootView = LocalView.current
-    val isMotionBlurEnabled = readingPrefs.isMotionBlurEnabled
-    DisposableEffect(isScrolling, isMotionBlurEnabled) {
-        if (Build.VERSION.SDK_INT >= 31 && isMotionBlurEnabled) {
-            if (isScrolling) {
-                rootView.setRenderEffect(
-                    RenderEffect.createBlurEffect(0f, 8f, Shader.TileMode.CLAMP)
-                )
-            } else {
-                rootView.setRenderEffect(null)
-            }
-        } else if (Build.VERSION.SDK_INT >= 31) {
-            rootView.setRenderEffect(null)
-        }
-        onDispose {
-            if (Build.VERSION.SDK_INT >= 31) {
-                rootView.setRenderEffect(null)
-            }
-        }
-    }
+
+    val scrollBlurModifier = if (isScrolling && Build.VERSION.SDK_INT >= 31 && readingPrefs.isMotionBlurEnabled) {
+        Modifier.blur(radiusX = 0.dp, radiusY = 8.dp)
+    } else Modifier
 
     val definition by viewModel.definition.collectAsState()
     val highlightedWords by viewModel.highlightedWords.collectAsState()
@@ -295,7 +277,7 @@ private fun ArticleReaderContent(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().weight(1f)
+            modifier = Modifier.fillMaxSize().weight(1f).then(scrollBlurModifier)
         ) {
                 item {
                     if (article.heroImageUrl != null) {
@@ -447,34 +429,61 @@ private fun ArticleReaderContent(
         )
     }
 
-    definition?.let { (word, def) ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissDefinition() },
-            title = {
-                Text(
-                    text = word,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+    definition?.let { defState ->
+        when (defState) {
+            is DefinitionState.Loading -> {
+                AlertDialog(
+                    onDismissRequest = { viewModel.dismissDefinition() },
+                    title = {
+                        Text(
+                            text = defState.word,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        )
+                    },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Looking up definition…")
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.dismissDefinition() }) {
+                            Text("Close")
+                        }
+                    }
                 )
-            },
-            text = {
-                Text(text = def.ifEmpty { "No definition found." })
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.toggleHighlightWord(word)
-                    viewModel.dismissDefinition()
-                }) {
-                    Text(
-                        if (word in highlightedWords) "Remove highlight" else "Highlight"
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissDefinition() }) {
-                    Text("Close")
-                }
             }
-        )
+            is DefinitionState.Result -> {
+                AlertDialog(
+                    onDismissRequest = { viewModel.dismissDefinition() },
+                    title = {
+                        Text(
+                            text = defState.word,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        )
+                    },
+                    text = {
+                        Text(text = defState.definition.ifEmpty { "No definition found." })
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.toggleHighlightWord(defState.word)
+                            viewModel.dismissDefinition()
+                        }) {
+                            Text(
+                                if (defState.word in highlightedWords) "Remove highlight" else "Highlight"
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.dismissDefinition() }) {
+                            Text("Close")
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -574,7 +583,7 @@ private fun ReaderParagraph(
                 withStyle(
                     SpanStyle(
                         color = colors.text,
-                        background = if (isHighlighted) colors.primary.copy(alpha = 0.25f) else Color.Transparent
+                        background = if (isHighlighted) Color(0x99FFEB3B) else Color.Transparent
                     )
                 ) {
                     append(word)
@@ -590,7 +599,7 @@ private fun ReaderParagraph(
                 withStyle(
                     SpanStyle(
                         color = colors.text,
-                        background = if (isHighlighted) colors.primary.copy(alpha = 0.25f) else Color.Transparent
+                        background = if (isHighlighted) Color(0x99FFEB3B) else Color.Transparent
                     )
                 ) {
                     append(word)
