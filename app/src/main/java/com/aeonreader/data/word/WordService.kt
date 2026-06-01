@@ -5,6 +5,7 @@ import com.aeonreader.data.local.WordDefinitionEntity
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,8 +24,9 @@ class WordService @Inject constructor(
         if (cached != null) return cached.definition
 
         return try {
+            val encoded = URLEncoder.encode(word, "UTF-8")
             val request = Request.Builder()
-                .url("https://api.dictionaryapi.dev/api/v2/entries/en/$word")
+                .url("https://api.dictionaryapi.dev/api/v2/entries/en/$encoded")
                 .build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return "Definition not found"

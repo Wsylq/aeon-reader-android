@@ -174,12 +174,13 @@ class ArticleViewModel @Inject constructor(
     fun toggleHighlightWord(word: String) {
         val state = _uiState.value
         if (state !is ArticleUiState.Success) return
+        val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
         viewModelScope.launch {
-            if (word in _highlightedWords.value) {
-                articleDao.removeHighlightedWord(state.article.url, word)
+            if (clean in _highlightedWords.value) {
+                articleDao.removeHighlightedWord(state.article.url, clean)
             } else {
                 articleDao.upsertHighlightedWord(
-                    HighlightedWordEntity(articleUrl = state.article.url, word = word)
+                    HighlightedWordEntity(articleUrl = state.article.url, word = clean)
                 )
             }
         }
