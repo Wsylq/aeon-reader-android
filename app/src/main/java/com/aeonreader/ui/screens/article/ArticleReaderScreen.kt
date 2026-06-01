@@ -78,12 +78,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.platform.LocalView
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.domain.Article
 import com.aeonreader.domain.ContentBlock
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ReadingTheme
+import com.aeonreader.ui.components.CachedAsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
@@ -292,9 +293,10 @@ private fun ArticleReaderContent(
                 item {
                     if (article.heroImageUrl != null) {
                         Box(modifier = Modifier.fillMaxWidth()) {
-                            AsyncImage(
-                                model = article.heroImageUrl,
+                            CachedAsyncImage(
+                                imageUrl = article.heroImageUrl,
                                 contentDescription = article.title,
+                                imageCache = viewModel.imageCache,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(260.dp)
@@ -418,7 +420,8 @@ private fun ArticleReaderContent(
                         colors = colors,
                         isHighlighted = highlightedBlockIndex == index,
                         isFirstParagraph = index == 0 && readingPrefs.theme == ReadingTheme.AEON,
-                        theme = readingPrefs.theme
+                        theme = readingPrefs.theme,
+                        imageCache = viewModel.imageCache
                     )
                 }
 
@@ -443,7 +446,8 @@ private fun ContentBlockItem(
     colors: ReaderColors,
     isHighlighted: Boolean = false,
     isFirstParagraph: Boolean = false,
-    theme: ReadingTheme = ReadingTheme.DEFAULT
+    theme: ReadingTheme = ReadingTheme.DEFAULT,
+    imageCache: ImageCache? = null
 ) {
     val highlightAlpha by animateFloatAsState(
         targetValue = if (isHighlighted) 1f else 0f,
@@ -482,7 +486,7 @@ private fun ContentBlockItem(
             colors = colors,
             modifier = bgModifier
         )
-        is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption, colors)
+        is ContentBlock.InlineImage -> ReaderImage(block.url, block.caption, colors, imageCache)
     }
 }
 
@@ -619,15 +623,16 @@ private fun ReaderPullQuote(text: String, prefs: ReadingPreferences, colors: Rea
 }
 
 @Composable
-private fun ReaderImage(url: String, caption: String?, colors: ReaderColors) {
+private fun ReaderImage(url: String, caption: String?, colors: ReaderColors, imageCache: ImageCache?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 16.dp, bottom = 12.dp)
     ) {
-        AsyncImage(
-            model = url,
+        CachedAsyncImage(
+            imageUrl = url,
             contentDescription = caption,
+            imageCache = imageCache,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)

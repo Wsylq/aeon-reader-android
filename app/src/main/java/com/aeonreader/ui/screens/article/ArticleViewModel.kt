@@ -2,6 +2,7 @@ package com.aeonreader.ui.screens.article
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.ReadingProgressRepository
@@ -36,7 +37,8 @@ class ArticleViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val readingProgressRepository: ReadingProgressRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    val imageCache: ImageCache
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArticleUiState>(ArticleUiState.Loading)

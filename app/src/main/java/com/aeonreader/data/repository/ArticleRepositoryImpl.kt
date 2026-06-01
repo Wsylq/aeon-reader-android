@@ -7,6 +7,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
+import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.data.local.ArticleDao
 import com.aeonreader.data.local.ArticleEntity
 import com.aeonreader.data.local.ArticleSummaryEntity
@@ -29,7 +30,8 @@ class ArticleRepositoryImpl @Inject constructor(
     private val parser: AeonParser,
     private val articleDao: ArticleDao,
     private val remoteKeyDao: RemoteKeyDao,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val imageCache: ImageCache
 ) : ArticleRepository {
 
     override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> {
@@ -86,6 +88,7 @@ class ArticleRepositoryImpl @Inject constructor(
                 sizeBytes = bodyJson.length.toLong()
             )
             articleDao.upsertArticle(entity)
+            cacheArticleImages(articleWithUrl)
             Result.success(articleWithUrl)
         } catch (e: Exception) {
             Result.failure(e)
@@ -113,6 +116,19 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override fun observeCachedArticleUrls(): Flow<Set<String>> =
         articleDao.getCachedArticleUrls().map { it.toSet() }
+
+    private fun cacheArticleImages(article: Article) {
+        val urls = mutableListOf<String>()
+        article.heroImageUrl?.let { urls.add(it) }
+        for (block in article.bodyBlocks) {
+            if (block is com.aeonreader.domain.ContentBlock.InlineImage) {
+                urls.add(block.url)
+            }
+        }
+        for (url in urls) {
+            try { imageCache.cacheImage(url) } catch (_: Exception) {}
+        }
+    }
 }
 
 private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article? {
