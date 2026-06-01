@@ -70,12 +70,13 @@ import androidx.compose.material3.ColorScheme
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.aeonreader.domain.Article
@@ -247,14 +248,26 @@ private fun ArticleReaderContent(
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
     val targetBlur by remember(isScrolling, readingPrefs.isMotionBlurEnabled) {
         derivedStateOf {
-            if (isScrolling && readingPrefs.isMotionBlurEnabled && Build.VERSION.SDK_INT >= 31) 6f else 0f
+            if (isScrolling && readingPrefs.isMotionBlurEnabled && Build.VERSION.SDK_INT >= 31) 8f else 0f
         }
     }
     val blurRadius by animateFloatAsState(
         targetValue = targetBlur,
-        animationSpec = tween(durationMillis = if (isScrolling) 80 else 250),
+        animationSpec = tween(durationMillis = if (isScrolling) 80 else 200),
         label = "scrollBlur"
     )
+    val rootView = LocalView.current
+    SideEffect {
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (blurRadius > 0f) {
+                rootView.setRenderEffect(
+                    RenderEffect.createBlurEffect(0f, blurRadius, Shader.TileMode.CLAMP)
+                )
+            } else {
+                rootView.setRenderEffect(null)
+            }
+        }
+    }
 
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
@@ -269,14 +282,7 @@ private fun ArticleReaderContent(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f)
-                .then(
-                    if (Build.VERSION.SDK_INT >= 31 && blurRadius > 0f) {
-                        Modifier.blur(radius = blurRadius.dp)
-                    } else Modifier
-                )
+            modifier = Modifier.fillMaxSize().weight(1f)
         ) {
                 item {
                     if (article.heroImageUrl != null) {
