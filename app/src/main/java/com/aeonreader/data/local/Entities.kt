@@ -34,6 +34,20 @@ data class ArticleEntity(
     val sizeBytes: Long
 )
 
+@Entity(tableName = "word_definitions")
+data class WordDefinitionEntity(
+    @PrimaryKey val word: String,
+    val definition: String,
+    val cachedAt: Long
+)
+
+@Entity(tableName = "highlighted_words")
+data class HighlightedWordEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val articleUrl: String,
+    val word: String
+)
+
 @Entity(tableName = "bookmarks")
 data class BookmarkEntity(
     @PrimaryKey val articleUrl: String,

@@ -4,6 +4,7 @@ import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArticleDao {
@@ -39,5 +40,23 @@ interface ArticleDao {
     suspend fun getTotalCacheSize(): Long
 
     @Query("SELECT url FROM articles")
-    fun getCachedArticleUrls(): kotlinx.coroutines.flow.Flow<List<String>>
+    fun getCachedArticleUrls(): Flow<List<String>>
+
+    @Query("SELECT * FROM word_definitions WHERE word = :word")
+    suspend fun getWordDefinition(word: String): WordDefinitionEntity?
+
+    @Upsert
+    suspend fun upsertWordDefinition(entity: WordDefinitionEntity)
+
+    @Query("DELETE FROM word_definitions WHERE cachedAt < :cutoffMillis")
+    suspend fun deleteOldDefinitions(cutoffMillis: Long)
+
+    @Query("SELECT word FROM highlighted_words WHERE articleUrl = :articleUrl")
+    fun getHighlightedWords(articleUrl: String): Flow<List<String>>
+
+    @Upsert
+    suspend fun upsertHighlightedWord(entity: HighlightedWordEntity)
+
+    @Query("DELETE FROM highlighted_words WHERE articleUrl = :articleUrl AND word = :word")
+    suspend fun removeHighlightedWord(articleUrl: String, word: String)
 }

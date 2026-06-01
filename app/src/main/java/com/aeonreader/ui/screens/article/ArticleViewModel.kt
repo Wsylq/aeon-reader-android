@@ -3,10 +3,13 @@ package com.aeonreader.ui.screens.article
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeonreader.data.cache.ImageCache
+import com.aeonreader.data.local.ArticleDao
+import com.aeonreader.data.local.HighlightedWordEntity
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.ReadingProgressRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
+import com.aeonreader.data.word.WordService
 import com.aeonreader.domain.Article
 import com.aeonreader.domain.ReadingPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,11 +41,19 @@ class ArticleViewModel @Inject constructor(
     private val bookmarkRepository: BookmarkRepository,
     private val readingProgressRepository: ReadingProgressRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val wordService: WordService,
+    private val articleDao: ArticleDao,
     val imageCache: ImageCache
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArticleUiState>(ArticleUiState.Loading)
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
+
+    private val _definition = MutableStateFlow<Pair<String, String>?>(null)
+    val definition: StateFlow<Pair<String, String>?> = _definition.asStateFlow()
+
+    private val _highlightedWords = MutableStateFlow<Set<String>>(emptySet())
+    val highlightedWords: StateFlow<Set<String>> = _highlightedWords.asStateFlow()
 
     val readingPrefs: StateFlow<ReadingPreferences> = userPreferencesRepository.readingPreferences
         .stateIn(viewModelScope, SharingStarted.Eagerly, ReadingPreferences())
@@ -68,6 +79,7 @@ class ArticleViewModel @Inject constructor(
                         isBookmarked = isBookmarked,
                         readingProgress = progress
                     )
+                    loadHighlightedWords(url)
                 },
                 onFailure = { error ->
                     val cached = articleRepository.getCachedArticle(url)
@@ -78,6 +90,7 @@ class ArticleViewModel @Inject constructor(
                             isBookmarked = false,
                             readingProgress = progress
                         )
+                        loadHighlightedWords(url)
                     } else {
                         val friendlyMessage = when {
                             error is UnknownHostException -> "No internet connection.\nDownload articles while online to read them offline."
@@ -130,6 +143,39 @@ class ArticleViewModel @Inject constructor(
         progressSaveJob = viewModelScope.launch {
             delay(2000)
             readingProgressRepository.saveProgress(state.article.url, blockIndex)
+        }
+    }
+
+    fun lookupWord(word: String) {
+        viewModelScope.launch {
+            val definition = wordService.getDefinition(word)
+            _definition.value = word to definition
+        }
+    }
+
+    fun dismissDefinition() {
+        _definition.value = null
+    }
+
+    private fun loadHighlightedWords(url: String) {
+        viewModelScope.launch {
+            articleDao.getHighlightedWords(url).collect { words ->
+                _highlightedWords.value = words.toSet()
+            }
+        }
+    }
+
+    fun toggleHighlightWord(word: String) {
+        val state = _uiState.value
+        if (state !is ArticleUiState.Success) return
+        viewModelScope.launch {
+            if (word in _highlightedWords.value) {
+                articleDao.removeHighlightedWord(state.article.url, word)
+            } else {
+                articleDao.upsertHighlightedWord(
+                    HighlightedWordEntity(articleUrl = state.article.url, word = word)
+                )
+            }
         }
     }
 }

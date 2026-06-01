@@ -22,12 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +58,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -271,6 +277,7 @@ private fun ArticleReaderContent(
         }
     }
 
+    val definition by viewModel.definition.collectAsState()
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         if (!readingPrefs.isImmersiveMode) {
@@ -421,7 +428,9 @@ private fun ArticleReaderContent(
                         isHighlighted = highlightedBlockIndex == index,
                         isFirstParagraph = index == 0 && readingPrefs.theme == ReadingTheme.AEON,
                         theme = readingPrefs.theme,
-                        imageCache = viewModel.imageCache
+                        imageCache = viewModel.imageCache,
+                        highlightedWords = viewModel.highlightedWords.value,
+                        onWordDoubleTap = { word -> viewModel.lookupWord(word) }
                     )
                 }
 
@@ -437,6 +446,36 @@ private fun ArticleReaderContent(
             onDismiss = { showSettings = false }
         )
     }
+
+    definition?.let { (word, def) ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissDefinition() },
+            title = {
+                Text(
+                    text = word,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+            },
+            text = {
+                Text(text = def.ifEmpty { "No definition found." })
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.toggleHighlightWord(word)
+                    viewModel.dismissDefinition()
+                }) {
+                    Text(
+                        if (word in viewModel.highlightedWords.value) "Remove highlight" else "Highlight"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissDefinition() }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -447,7 +486,9 @@ private fun ContentBlockItem(
     isHighlighted: Boolean = false,
     isFirstParagraph: Boolean = false,
     theme: ReadingTheme = ReadingTheme.DEFAULT,
-    imageCache: ImageCache? = null
+    imageCache: ImageCache? = null,
+    highlightedWords: Set<String> = emptySet(),
+    onWordDoubleTap: (String) -> Unit = {}
 ) {
     val highlightAlpha by animateFloatAsState(
         targetValue = if (isHighlighted) 1f else 0f,
@@ -466,7 +507,9 @@ private fun ContentBlockItem(
             colors = colors,
             modifier = bgModifier,
             isFirstParagraph = isFirstParagraph,
-            theme = theme
+            theme = theme,
+            highlightedWords = highlightedWords,
+            onWordDoubleTap = onWordDoubleTap
         )
         is ContentBlock.Subheading -> ReaderSubheading(
             text = block.text,
@@ -497,10 +540,23 @@ private fun ReaderParagraph(
     colors: ReaderColors,
     modifier: Modifier = Modifier,
     isFirstParagraph: Boolean = false,
-    theme: ReadingTheme = ReadingTheme.DEFAULT
+    theme: ReadingTheme = ReadingTheme.DEFAULT,
+    highlightedWords: Set<String> = emptySet(),
+    onWordDoubleTap: (String) -> Unit = {}
 ) {
-    if (isFirstParagraph && text.isNotEmpty()) {
-        val annotatedText = buildAnnotatedString {
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = prefs.fontSize.sp,
+        fontFamily = when (prefs.font) {
+            ReadingFont.SANS -> FontFamily.SansSerif
+            ReadingFont.SERIF -> FontFamily.Serif
+            ReadingFont.MONO -> FontFamily.Monospace
+        },
+        lineHeight = (prefs.fontSize * 1.7).sp,
+        letterSpacing = 0.15.sp
+    )
+
+    val annotatedText = if (isFirstParagraph && text.isNotEmpty() && theme == ReadingTheme.AEON) {
+        buildAnnotatedString {
             withStyle(
                 SpanStyle(
                     fontSize = (prefs.fontSize * 2.4).sp,
@@ -510,41 +566,73 @@ private fun ReaderParagraph(
             ) {
                 append(text.first().toString())
             }
-            withStyle(SpanStyle(color = colors.text)) {
-                append(text.drop(1))
+            val rest = text.drop(1)
+            val words = rest.split(Regex("(?<=\\s)|(?=\\s)"))
+            for (word in words) {
+                val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
+                val isHighlighted = clean.isNotEmpty() && clean in highlightedWords
+                withStyle(
+                    SpanStyle(
+                        color = colors.text,
+                        background = if (isHighlighted) colors.primary.copy(alpha = 0.25f) else Color.Transparent
+                    )
+                ) {
+                    append(word)
+                }
             }
         }
+    } else {
+        buildAnnotatedString {
+            val words = text.split(Regex("(?<=\\s)|(?=\\s)"))
+            for (word in words) {
+                val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
+                val isHighlighted = clean.isNotEmpty() && clean in highlightedWords
+                withStyle(
+                    SpanStyle(
+                        color = colors.text,
+                        background = if (isHighlighted) colors.primary.copy(alpha = 0.25f) else Color.Transparent
+                    )
+                ) {
+                    append(word)
+                }
+            }
+        }
+    }
+
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    Box(modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)) {
         Text(
             text = annotatedText,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = prefs.fontSize.sp,
-                fontFamily = when (prefs.font) {
-                    ReadingFont.SANS -> FontFamily.SansSerif
-                    ReadingFont.SERIF -> FontFamily.Serif
-                    ReadingFont.MONO -> FontFamily.Monospace
-                },
-                lineHeight = (prefs.fontSize * 1.7).sp,
-                letterSpacing = 0.15.sp
-            ),
-            modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
-        )
-    } else {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = prefs.fontSize.sp,
-                fontFamily = when (prefs.font) {
-                    ReadingFont.SANS -> FontFamily.SansSerif
-                    ReadingFont.SERIF -> FontFamily.Serif
-                    ReadingFont.MONO -> FontFamily.Monospace
-                },
-                lineHeight = (prefs.fontSize * 1.7).sp,
-                letterSpacing = 0.15.sp
-            ),
-            color = colors.text,
-            modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+            style = textStyle,
+            onTextLayout = { layoutResult = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(onWordDoubleTap) {
+                    detectTapGestures(
+                        onDoubleTap = { offset ->
+                            layoutResult?.let { layout ->
+                                val charOffset = layout.getOffsetForPosition(offset)
+                                val wordRange = findWordRange(text, charOffset)
+                                if (wordRange != null) {
+                                    onWordDoubleTap(text.substring(wordRange))
+                                }
+                            }
+                        }
+                    )
+                }
         )
     }
+}
+
+private fun findWordRange(text: String, offset: Int): IntRange? {
+    if (offset < 0 || offset >= text.length) return null
+    if (text[offset] == ' ' || text[offset] == '\n') return null
+    var start = offset
+    var end = offset
+    while (start > 0 && text[start - 1] !in " \n\t") { start-- }
+    while (end < text.length && text[end] !in " \n\t") { end++ }
+    return start..end
 }
 
 @Composable

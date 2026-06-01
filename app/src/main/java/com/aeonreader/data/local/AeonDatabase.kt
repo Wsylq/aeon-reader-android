@@ -9,9 +9,11 @@ import androidx.room.RoomDatabase
         ArticleEntity::class,
         BookmarkEntity::class,
         ReadingProgressEntity::class,
-        RemoteKeyEntity::class
+        RemoteKeyEntity::class,
+        WordDefinitionEntity::class,
+        HighlightedWordEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AeonDatabase : RoomDatabase() {
