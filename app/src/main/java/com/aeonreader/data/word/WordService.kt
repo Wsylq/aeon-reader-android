@@ -2,6 +2,8 @@ package com.aeonreader.data.word
 
 import com.aeonreader.data.local.ArticleDao
 import com.aeonreader.data.local.WordDefinitionEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -20,34 +22,45 @@ class WordService @Inject constructor(
         .build()
 
     suspend fun getDefinition(word: String): String {
+        if (word.isBlank()) return "No word selected"
+
         val cached = articleDao.getWordDefinition(word)
         if (cached != null) return cached.definition
 
-        return try {
-            val encoded = URLEncoder.encode(word, "UTF-8")
-            val request = Request.Builder()
-                .url("https://api.dictionaryapi.dev/api/v2/entries/en/$encoded")
-                .build()
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return "Definition not found"
-            val body = response.body?.string() ?: return "Definition not found"
-            val definition = parseDefinition(body)
-            articleDao.upsertWordDefinition(
-                WordDefinitionEntity(
-                    word = word,
-                    definition = definition,
-                    cachedAt = System.currentTimeMillis()
+        return withContext(Dispatchers.IO) {
+            try {
+                val encoded = URLEncoder.encode(word, "UTF-8")
+                val request = Request.Builder()
+                    .url("https://api.dictionaryapi.dev/api/v2/entries/en/$encoded")
+                    .header("User-Agent", "Eon/0.10 (Android; ae-on-reader)")
+                    .build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    val code = response.code
+                    return@withContext when (code) {
+                        404 -> "No definition found for \"$word\"."
+                        429 -> "Rate limited.\nTry again in a moment."
+                        else -> "Server error ($code).\nTry again later."
+                    }
+                }
+                val body = response.body?.string() ?: return@withContext "Definition not found"
+                val definition = parseDefinition(body)
+                articleDao.upsertWordDefinition(
+                    WordDefinitionEntity(
+                        word = word,
+                        definition = definition,
+                        cachedAt = System.currentTimeMillis()
+                    )
                 )
-            )
-            definition
-        } catch (e: Exception) {
-            val msg = when {
-                e is java.net.UnknownHostException -> "No internet connection.\nConnect to WiFi and try again."
-                e is java.net.SocketTimeoutException -> "Request timed out.\nTry again later."
-                e.message?.contains("Unable to resolve host") == true -> "DNS lookup failed.\nCheck your internet connection."
-                else -> "Error: ${e.message ?: "Unknown error"}"
+                definition
+            } catch (e: Exception) {
+                when {
+                    e is java.net.UnknownHostException -> "No internet connection.\nConnect to WiFi and try again."
+                    e is java.net.SocketTimeoutException -> "Request timed out.\nTry again later."
+                    e.message?.contains("Unable to resolve host") == true -> "DNS lookup failed.\nCheck your internet connection."
+                    else -> "Error: ${e.message ?: "Unknown error"}"
+                }
             }
-            msg
         }
     }
 

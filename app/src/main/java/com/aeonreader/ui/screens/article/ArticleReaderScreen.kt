@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -71,13 +73,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.ColorScheme
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import android.os.Build
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -253,6 +256,23 @@ private fun ArticleReaderContent(
     }
 
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
+    val rootView = LocalView.current
+    val hasMotionBlur = readingPrefs.isMotionBlurEnabled
+    DisposableEffect(isScrolling, hasMotionBlur) {
+        if (Build.VERSION.SDK_INT >= 31 && hasMotionBlur) {
+            rootView.setRenderEffect(
+                if (isScrolling)
+                    RenderEffect.createBlurEffect(0f, 8f, Shader.TileMode.CLAMP)
+                else
+                    null
+            )
+        } else if (Build.VERSION.SDK_INT >= 31) {
+            rootView.setRenderEffect(null)
+        }
+        onDispose {
+            if (Build.VERSION.SDK_INT >= 31) rootView.setRenderEffect(null)
+        }
+    }
 
     val definition by viewModel.definition.collectAsState()
     val highlightedWords by viewModel.highlightedWords.collectAsState()
@@ -273,11 +293,7 @@ private fun ArticleReaderContent(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().weight(1f).then(
-                if (isScrolling && Build.VERSION.SDK_INT >= 31 && readingPrefs.isMotionBlurEnabled)
-                    Modifier.blur(radiusX = 0.dp, radiusY = 8.dp)
-                else Modifier
-            )
+            modifier = Modifier.fillMaxSize().weight(1f)
         ) {
             item {
                     if (article.heroImageUrl != null) {

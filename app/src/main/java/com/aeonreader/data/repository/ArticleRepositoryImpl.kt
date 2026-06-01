@@ -18,6 +18,7 @@ import com.aeonreader.data.network.AeonScraper
 import com.aeonreader.data.network.NetworkMonitor
 import com.aeonreader.domain.Article
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import javax.inject.Inject
@@ -115,7 +116,7 @@ class ArticleRepositoryImpl @Inject constructor(
     override fun observeNetworkStatus(): Flow<Boolean> = networkMonitor.networkStatus
 
     override fun observeCachedArticleUrls(): Flow<Set<String>> =
-        articleDao.getCachedArticleUrls().map { it.toSet() }
+        articleDao.getCachedArticleUrls().map { it.toSet() }.distinctUntilChanged()
 
     private fun cacheArticleImages(article: Article) {
         val urls = mutableListOf<String>()
