@@ -30,6 +30,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private val READING_FONT_SIZE = intPreferencesKey("reading_font_size")
         private val READING_IMMERSIVE_MODE = booleanPreferencesKey("reading_immersive_mode")
         private val READING_THEME = stringPreferencesKey("reading_theme")
+        private val READING_MOTION_BLUR = booleanPreferencesKey("reading_motion_blur")
     }
 
     override val selectedCategory: Flow<String> = context.dataStore.data.map { prefs ->
@@ -49,9 +50,16 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val fontSize = prefs[READING_FONT_SIZE] ?: 16
         val immersiveMode = prefs[READING_IMMERSIVE_MODE] ?: false
         val themeName = prefs[READING_THEME] ?: "DEFAULT"
+        val motionBlur = prefs[READING_MOTION_BLUR] ?: true
         val font = try { ReadingFont.valueOf(fontName) } catch (_: Exception) { ReadingFont.SANS }
         val theme = try { ReadingTheme.valueOf(themeName) } catch (_: Exception) { ReadingTheme.DEFAULT }
-        ReadingPreferences(font = font, fontSize = fontSize, isImmersiveMode = immersiveMode, theme = theme)
+        ReadingPreferences(
+            font = font,
+            fontSize = fontSize,
+            isImmersiveMode = immersiveMode,
+            theme = theme,
+            isMotionBlurEnabled = motionBlur
+        )
     }
 
     override suspend fun setSelectedCategory(category: String) {
@@ -76,6 +84,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             stored[READING_FONT_SIZE] = prefs.fontSize
             stored[READING_IMMERSIVE_MODE] = prefs.isImmersiveMode
             stored[READING_THEME] = prefs.theme.name
+            stored[READING_MOTION_BLUR] = prefs.isMotionBlurEnabled
         }
     }
 }

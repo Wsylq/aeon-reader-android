@@ -70,9 +70,12 @@ import androidx.compose.material3.ColorScheme
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.aeonreader.domain.Article
@@ -241,6 +244,17 @@ private fun ArticleReaderContent(
         }
     }
 
+    val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
+    val targetBlur by remember(isScrolling, readingPrefs.isMotionBlurEnabled) {
+        derivedStateOf {
+            if (isScrolling && readingPrefs.isMotionBlurEnabled && Build.VERSION.SDK_INT >= 31) 6f else 0f
+        }
+    }
+    val blurRadius by animateFloatAsState(
+        targetValue = targetBlur,
+        animationSpec = tween(durationMillis = if (isScrolling) 80 else 250),
+        label = "scrollBlur"
+    )
 
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
@@ -253,7 +267,17 @@ private fun ArticleReaderContent(
             )
         }
 
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().weight(1f)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .then(
+                    if (Build.VERSION.SDK_INT >= 31 && blurRadius > 0f) {
+                        Modifier.blur(radius = blurRadius.dp)
+                    } else Modifier
+                )
+        ) {
                 item {
                     if (article.heroImageUrl != null) {
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -773,6 +797,51 @@ private fun ReadingSettingsSheet(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            if (Build.VERSION.SDK_INT >= 31) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { viewModel.setReadingPrefs(prefs.copy(isMotionBlurEnabled = !prefs.isMotionBlurEnabled)) }
+                        .padding(vertical = 12.dp, horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Motion Blur",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Smooth vertical blur while scrolling",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (prefs.isMotionBlurEnabled) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (prefs.isMotionBlurEnabled) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             Text("Theme", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
             Spacer(modifier = Modifier.height(8.dp))
