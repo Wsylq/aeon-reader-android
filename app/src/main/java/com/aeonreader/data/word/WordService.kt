@@ -8,18 +8,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import java.net.URLEncoder
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WordService @Inject constructor(
-    private val articleDao: ArticleDao
+    private val articleDao: ArticleDao,
+    private val client: OkHttpClient
 ) {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
 
     suspend fun getDefinition(word: String): String {
         if (word.isBlank()) return "No word selected"
