@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -254,30 +255,29 @@ private fun ArticleReaderContent(
     }
 
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
-    val targetBlur by remember(isScrolling, readingPrefs.isMotionBlurEnabled) {
-        derivedStateOf {
-            if (isScrolling && readingPrefs.isMotionBlurEnabled && Build.VERSION.SDK_INT >= 31) 8f else 0f
-        }
-    }
-    val blurRadius by animateFloatAsState(
-        targetValue = targetBlur,
-        animationSpec = tween(durationMillis = if (isScrolling) 80 else 200),
-        label = "scrollBlur"
-    )
     val rootView = LocalView.current
-    SideEffect {
-        if (Build.VERSION.SDK_INT >= 31) {
-            if (blurRadius > 0f) {
+    val isMotionBlurEnabled = readingPrefs.isMotionBlurEnabled
+    DisposableEffect(isScrolling, isMotionBlurEnabled) {
+        if (Build.VERSION.SDK_INT >= 31 && isMotionBlurEnabled) {
+            if (isScrolling) {
                 rootView.setRenderEffect(
-                    RenderEffect.createBlurEffect(0f, blurRadius, Shader.TileMode.CLAMP)
+                    RenderEffect.createBlurEffect(0f, 8f, Shader.TileMode.CLAMP)
                 )
             } else {
+                rootView.setRenderEffect(null)
+            }
+        } else if (Build.VERSION.SDK_INT >= 31) {
+            rootView.setRenderEffect(null)
+        }
+        onDispose {
+            if (Build.VERSION.SDK_INT >= 31) {
                 rootView.setRenderEffect(null)
             }
         }
     }
 
     val definition by viewModel.definition.collectAsState()
+    val highlightedWords by viewModel.highlightedWords.collectAsState()
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         if (!readingPrefs.isImmersiveMode) {
@@ -429,7 +429,7 @@ private fun ArticleReaderContent(
                         isFirstParagraph = index == 0 && readingPrefs.theme == ReadingTheme.AEON,
                         theme = readingPrefs.theme,
                         imageCache = viewModel.imageCache,
-                        highlightedWords = viewModel.highlightedWords.value,
+                        highlightedWords = highlightedWords,
                         onWordDoubleTap = { word -> viewModel.lookupWord(word) }
                     )
                 }
@@ -465,7 +465,7 @@ private fun ArticleReaderContent(
                     viewModel.dismissDefinition()
                 }) {
                     Text(
-                        if (word in viewModel.highlightedWords.value) "Remove highlight" else "Highlight"
+                        if (word in highlightedWords) "Remove highlight" else "Highlight"
                     )
                 }
             },
