@@ -40,8 +40,14 @@ class WordService @Inject constructor(
                 )
             )
             definition
-        } catch (_: Exception) {
-            "No internet connection.\nOpen this article while online to cache word definitions."
+        } catch (e: Exception) {
+            val msg = when {
+                e is java.net.UnknownHostException -> "No internet connection.\nConnect to WiFi and try again."
+                e is java.net.SocketTimeoutException -> "Request timed out.\nTry again later."
+                e.message?.contains("Unable to resolve host") == true -> "DNS lookup failed.\nCheck your internet connection."
+                else -> "Error: ${e.message ?: "Unknown error"}"
+            }
+            msg
         }
     }
 
