@@ -37,15 +37,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.domain.ArticleSummary
-import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -233,7 +234,11 @@ fun ArticleCard(
         Column(modifier = Modifier.padding(12.dp)) {
             if (summary.heroImageUrl != null) {
                 AsyncImage(
-                    model = summary.heroImageUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(summary.heroImageUrl)
+                        .crossfade(false)
+                        .size(720)
+                        .build(),
                     contentDescription = summary.title,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -317,6 +322,6 @@ private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
         category = category,
         heroImageUrl = heroImageUrl,
         estimatedReadingTimeMinutes = estimatedReadingTimeMinutes,
-        cachedAt = Instant.ofEpochMilli(cachedAt)
+        cachedAt = cachedAt
     )
 }

@@ -4,7 +4,6 @@ import androidx.compose.runtime.Immutable
 import java.time.Instant
 import java.time.LocalDate
 
-@Immutable
 data class ArticleSummary(
     val url: String,
     val title: String,
@@ -13,7 +12,7 @@ data class ArticleSummary(
     val category: String?,
     val heroImageUrl: String?,
     val estimatedReadingTimeMinutes: Int,
-    val cachedAt: Instant?
+    val cachedAt: Long?
 )
 
 data class Article(
