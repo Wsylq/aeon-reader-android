@@ -32,6 +32,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,6 +108,7 @@ private fun FeedContent(
         onRefresh = onRefresh,
         modifier = modifier
     ) {
+        val itemKey = remember { { index: Int -> pagingItems[index]?.url ?: index } }
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -134,12 +136,14 @@ private fun FeedContent(
                 }
             }
 
-            items(pagingItems.itemCount, key = { index -> pagingItems[index]?.url ?: index }) { index ->
+            items(pagingItems.itemCount, key = itemKey) { index ->
                 pagingItems[index]?.let { entity ->
+                    val onClick = remember(entity.url, onArticleClick) { { onArticleClick(entity.url) } }
+                    val isOffline = state.isOffline && state.cachedArticleUrls.contains(entity.url)
                     ArticleCard(
                         summary = entity.toArticleSummary(),
-                        onClick = { onArticleClick(entity.url) },
-                        isOfflineAvailable = state.isOffline && state.cachedArticleUrls.contains(entity.url)
+                        onClick = onClick,
+                        isOfflineAvailable = isOffline
                     )
                 }
             }
@@ -189,10 +193,11 @@ fun CategoryChipRow(
     onCategorySelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .horizontalScroll(scrollState)
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {

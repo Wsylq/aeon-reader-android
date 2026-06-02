@@ -1,8 +1,10 @@
 package com.aeonreader.data.local
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+@Immutable
 @Entity(tableName = "article_summaries")
 data class ArticleSummaryEntity(
     @PrimaryKey val url: String,

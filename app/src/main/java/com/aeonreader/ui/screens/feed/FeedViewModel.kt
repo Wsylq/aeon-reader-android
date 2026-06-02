@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,6 +45,7 @@ class FeedViewModel @Inject constructor(
     private var isOffline: Boolean = false
     private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
     private var cachedUrls: Set<String> = emptySet()
+    private var combineJob: Job? = null
 
     init {
         loadInitial()
@@ -78,7 +80,8 @@ class FeedViewModel @Inject constructor(
             if (category == "all") null else category
         ).cachedIn(viewModelScope)
 
-        viewModelScope.launch {
+        combineJob?.cancel()
+        combineJob = viewModelScope.launch {
             combine(
                 articleRepository.observeNetworkStatus(),
                 articleRepository.observeCachedArticleUrls()
