@@ -134,10 +134,11 @@ class ArticleViewModel @Inject constructor(
         val state = _uiState.value
         if (state !is ArticleUiState.Success) return
 
-        val lastBlock = state.article.bodyBlocks.size - 1
+        val totalBlocks = state.article.bodyBlocks.size
+        val lastBlock = totalBlocks - 1
         if (blockIndex >= lastBlock) {
             viewModelScope.launch {
-                readingProgressRepository.clearProgress(state.article.url)
+                readingProgressRepository.saveProgress(state.article.url, totalBlocks, totalBlocks)
             }
             return
         }
