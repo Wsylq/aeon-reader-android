@@ -42,7 +42,8 @@ data class Bookmark(
     val title: String,
     val author: String?,
     val heroImageUrl: String?,
-    val bookmarkedAt: Instant
+    val bookmarkedAt: Instant,
+    val progressPercent: Float? = null
 )
 
 data class ReadingProgress(

@@ -3,6 +3,7 @@ package com.aeonreader.ui.screens.bookmarks
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeonreader.data.repository.BookmarkRepository
+import com.aeonreader.data.repository.ReadingProgressRepository
 import com.aeonreader.domain.Bookmark
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,8 @@ sealed interface BookmarksUiState {
 
 @HiltViewModel
 class BookmarksViewModel @Inject constructor(
-    private val bookmarkRepository: BookmarkRepository
+    private val bookmarkRepository: BookmarkRepository,
+    private val readingProgressRepository: ReadingProgressRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BookmarksUiState>(BookmarksUiState.Loading)
@@ -28,7 +30,14 @@ class BookmarksViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             bookmarkRepository.observeBookmarks().collect { bookmarks ->
-                _uiState.value = BookmarksUiState.Success(bookmarks)
+                val enriched = bookmarks.map { bookmark ->
+                    val progress = readingProgressRepository.getProgress(bookmark.articleUrl)
+                    if (progress != null && progress.totalBlocks > 0) {
+                        val percent = progress.lastBlockIndex.toFloat() / progress.totalBlocks.toFloat()
+                        bookmark.copy(progressPercent = percent)
+                    } else bookmark
+                }
+                _uiState.value = BookmarksUiState.Success(enriched)
             }
         }
     }

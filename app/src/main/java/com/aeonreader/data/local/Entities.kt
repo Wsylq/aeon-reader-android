@@ -67,6 +67,7 @@ data class BookmarkEntity(
 data class ReadingProgressEntity(
     @PrimaryKey val articleUrl: String,
     val lastBlockIndex: Int,
+    val totalBlocks: Int = 0,
     val savedAt: Long
 )
 

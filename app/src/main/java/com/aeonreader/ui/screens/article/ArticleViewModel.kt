@@ -82,7 +82,7 @@ class ArticleViewModel @Inject constructor(
                     _uiState.value = ArticleUiState.Success(
                         article = article,
                         isBookmarked = isBookmarked,
-                        readingProgress = progress
+                        readingProgress = progress?.lastBlockIndex
                     )
                     loadHighlightedWords(url)
                 },
@@ -93,7 +93,7 @@ class ArticleViewModel @Inject constructor(
                         _uiState.value = ArticleUiState.Success(
                             article = cached,
                             isBookmarked = false,
-                            readingProgress = progress
+                            readingProgress = progress?.lastBlockIndex
                         )
                         loadHighlightedWords(url)
                     } else {
@@ -147,7 +147,7 @@ class ArticleViewModel @Inject constructor(
         progressSaveJob?.cancel()
         progressSaveJob = viewModelScope.launch {
             delay(2000)
-            readingProgressRepository.saveProgress(state.article.url, blockIndex)
+            readingProgressRepository.saveProgress(state.article.url, blockIndex, state.article.bodyBlocks.size)
         }
     }
 
