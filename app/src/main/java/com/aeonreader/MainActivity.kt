@@ -3,6 +3,7 @@ package com.aeonreader
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -105,12 +106,24 @@ private fun UpdateDialogHost(
 
     LaunchedEffect(Unit) {
         val currentVersion = try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0"
-        } catch (_: PackageManager.NameNotFoundException) { "0" }
+            val info = if (Build.VERSION.SDK_INT >= 33) {
+                val packageInfo = context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.PackageInfoFlags.of(0)
+                )
+                packageInfo.versionName
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            }
+            info ?: "0"
+        } catch (_: Exception) { "0" }
 
         withContext(Dispatchers.IO) {
             val result = updateManager.checkForUpdate(currentVersion)
             val info = result.getOrNull() ?: return@withContext
+
+            if (info.latestVersion == currentVersion.trim()) return@withContext
 
             val lastPromptedVersion = prefs.getString("last_prompted_version", "") ?: ""
             if (lastPromptedVersion == info.latestVersion) return@withContext

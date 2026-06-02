@@ -44,12 +44,15 @@ class AppUpdateManager @Inject constructor() {
 
             val body = response.body?.string() ?: return Result.success(null)
             val json = JSONObject(body)
-            val tagName = json.optString("tag_name", "") ?: ""
-            val latestVersion = tagName.removePrefix("v")
+            val tagName = (json.optString("tag_name", "") ?: "").trim()
+            val latestVersion = tagName.removePrefix("v").trim()
 
             if (latestVersion.isBlank()) return Result.success(null)
 
-            val currentNorm = currentVersion.split(".").map { it.toIntOrNull() ?: 0 }
+            val cv = currentVersion.trim()
+            if (cv == latestVersion) return Result.success(null)
+
+            val currentNorm = cv.split(".").map { it.toIntOrNull() ?: 0 }
             val latestNorm = latestVersion.split(".").map { it.toIntOrNull() ?: 0 }
 
             for (i in 0 until maxOf(currentNorm.size, latestNorm.size)) {
