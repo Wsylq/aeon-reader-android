@@ -486,7 +486,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             }
         }
         return buildString {
-            appendLine("@cache_version=4")
+            appendLine("@cache_version=5")
             appendLine(escape(article.url))
             appendLine(escape(article.title))
             appendLine(escape(article.description ?: ""))
@@ -522,8 +522,9 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 return Result.failure(Exception("Invalid serialized format"))
             }
             val versionLine = lines[0]
-            if (!versionLine.startsWith("@cache_version=")) {
-                return Result.failure(Exception("Unknown cache format"))
+            val version = versionLine.removePrefix("@cache_version=").toIntOrNull()
+            if (version == null || version < 5) {
+                return Result.failure(Exception("Unsupported cache version: $versionLine"))
             }
             val url = unescape(lines[1])
             val title = unescape(lines[2])
