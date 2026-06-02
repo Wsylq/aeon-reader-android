@@ -42,6 +42,22 @@ class BookmarksViewModel @Inject constructor(
         }
     }
 
+    fun refreshProgress() {
+        val current = _uiState.value
+        if (current is BookmarksUiState.Success) {
+            viewModelScope.launch {
+                val enriched = current.bookmarks.map { bookmark ->
+                    val progress = readingProgressRepository.getProgress(bookmark.articleUrl)
+                    if (progress != null && progress.totalBlocks > 0) {
+                        val percent = progress.lastBlockIndex.toFloat() / progress.totalBlocks.toFloat()
+                        bookmark.copy(progressPercent = percent)
+                    } else bookmark
+                }
+                _uiState.value = BookmarksUiState.Success(enriched)
+            }
+        }
+    }
+
     fun deleteBookmark(articleUrl: String) {
         viewModelScope.launch {
             val result = bookmarkRepository.removeBookmark(articleUrl)

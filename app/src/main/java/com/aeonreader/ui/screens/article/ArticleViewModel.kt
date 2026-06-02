@@ -13,8 +13,6 @@ import com.aeonreader.data.word.WordService
 import com.aeonreader.domain.Article
 import com.aeonreader.domain.ReadingPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +61,7 @@ class ArticleViewModel @Inject constructor(
     val readingPrefs: StateFlow<ReadingPreferences> = userPreferencesRepository.readingPreferences
         .stateIn(viewModelScope, SharingStarted.Eagerly, ReadingPreferences())
 
-    private var progressSaveJob: Job? = null
+
 
     fun setReadingPrefs(prefs: ReadingPreferences) {
         viewModelScope.launch {
@@ -144,9 +142,7 @@ class ArticleViewModel @Inject constructor(
             return
         }
 
-        progressSaveJob?.cancel()
-        progressSaveJob = viewModelScope.launch {
-            delay(2000)
+        viewModelScope.launch {
             readingProgressRepository.saveProgress(state.article.url, blockIndex, state.article.bodyBlocks.size)
         }
     }
