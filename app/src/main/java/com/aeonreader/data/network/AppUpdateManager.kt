@@ -70,7 +70,7 @@ class AppUpdateManager @Inject constructor() {
                     val releaseNotes = json.optString("body", "") ?: ""
                     return Result.success(
                         UpdateInfo(
-                            latestVersion = tagName,
+                            latestVersion = latestVersion,
                             downloadUrl = downloadUrl,
                             releaseNotes = releaseNotes.take(500)
                         )

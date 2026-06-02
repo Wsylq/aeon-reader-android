@@ -152,10 +152,11 @@ class ArticleViewModel @Inject constructor(
     }
 
     fun lookupWord(word: String) {
+        val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
         viewModelScope.launch {
-            _definition.value = DefinitionState.Loading(word)
-            val definition = wordService.getDefinition(word)
-            _definition.value = DefinitionState.Result(word, definition)
+            _definition.value = DefinitionState.Loading(clean)
+            val definition = wordService.getDefinition(clean)
+            _definition.value = DefinitionState.Result(clean, definition)
         }
     }
 
