@@ -233,12 +233,16 @@ fun ArticleCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             if (summary.heroImageUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val imageRequest = remember(summary.heroImageUrl) {
+                    ImageRequest.Builder(context)
                         .data(summary.heroImageUrl)
                         .crossfade(false)
                         .size(720)
-                        .build(),
+                        .build()
+                }
+                AsyncImage(
+                    model = imageRequest,
                     contentDescription = summary.title,
                     modifier = Modifier
                         .fillMaxWidth()

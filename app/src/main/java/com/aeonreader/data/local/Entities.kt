@@ -2,10 +2,14 @@ package com.aeonreader.data.local
 
 import androidx.compose.runtime.Immutable
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Immutable
-@Entity(tableName = "article_summaries")
+@Entity(
+    tableName = "article_summaries",
+    indices = [Index(value = ["pageOrder"], orders = [Index.Order.ASC])]
+)
 data class ArticleSummaryEntity(
     @PrimaryKey val url: String,
     val title: String,

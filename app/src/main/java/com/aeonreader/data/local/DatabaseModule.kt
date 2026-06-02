@@ -35,6 +35,12 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_article_summaries_pageOrder ON article_summaries(pageOrder ASC)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AeonDatabase {
@@ -42,7 +48,7 @@ object DatabaseModule {
             context,
             AeonDatabase::class.java,
             "aeon_reader.db"
-        ).addMigrations(MIGRATION_3_4)
+        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigration()
             .build()
     }

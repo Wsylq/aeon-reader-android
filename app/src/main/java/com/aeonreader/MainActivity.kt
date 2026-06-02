@@ -99,13 +99,13 @@ private fun UpdateDialogHost(
             context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0"
         } catch (_: PackageManager.NameNotFoundException) { "0" }
 
-        val lastPromptedVersion = prefs.getString("last_prompted_version", "") ?: ""
-
-        if (lastPromptedVersion == currentVersion) return@LaunchedEffect
-
-        check@ withContext(Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             val result = updateManager.checkForUpdate(currentVersion)
             val info = result.getOrNull() ?: return@withContext
+
+            val lastPromptedVersion = prefs.getString("last_prompted_version", "") ?: ""
+            if (lastPromptedVersion == info.latestVersion) return@withContext
+
             updateInfo = info
             showDialog = true
         }
