@@ -48,6 +48,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -626,6 +627,7 @@ private fun ReaderParagraph(
     }
 
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val currentOnWordDoubleTap by rememberUpdatedState(onWordDoubleTap)
 
     Box(modifier = modifier.padding(horizontal = 24.dp, vertical = 6.dp)) {
         Text(
@@ -634,14 +636,14 @@ private fun ReaderParagraph(
             onTextLayout = { layoutResult = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .pointerInput(onWordDoubleTap) {
+                .pointerInput(Unit) {
                     detectTapGestures(
                         onDoubleTap = { offset ->
                             layoutResult?.let { layout ->
                                 val charOffset = layout.getOffsetForPosition(offset)
                                 val wordRange = findWordRange(text, charOffset)
                                 if (wordRange != null) {
-                                    onWordDoubleTap(text.substring(wordRange))
+                                    currentOnWordDoubleTap(text.substring(wordRange))
                                 }
                             }
                         }
