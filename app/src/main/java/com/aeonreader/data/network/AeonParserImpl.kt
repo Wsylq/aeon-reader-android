@@ -155,6 +155,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             val heroImage = heroImg?.let { extractSrc(it) }
 
             val bodyBlocks = extractBodyBlocks(doc)
+            val relatedArticles = parseRelatedArticles(doc)
 
             val wordCount = bodyBlocks.sumOf { block ->
                 when (block) {
@@ -177,7 +178,8 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     category = category,
                     heroImageUrl = heroImage,
                     bodyBlocks = bodyBlocks,
-                    wordCount = wordCount
+                    wordCount = wordCount,
+                    relatedArticles = relatedArticles
                 )
             )
         } catch (e: Exception) {
@@ -218,6 +220,43 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             if (text.contains(cat, ignoreCase = true)) return cat
         }
         return null
+    }
+
+    private fun parseRelatedArticles(doc: Element): List<ArticleSummary> {
+        val cards = doc.select("main a[href^='/essays/']")
+        val seen = mutableSetOf<String>()
+        return cards.mapNotNull { card ->
+            val href = card.attr("href")
+            val url = "https://aeon.co$href"
+            if (url in seen) return@mapNotNull null
+            seen.add(url)
+
+            val titleEl = card.selectFirst("p.font-bold.font-serif")
+            val title = titleEl?.text()?.ifBlank { null } ?: return@mapNotNull null
+
+            val descEl = card.selectFirst("p.mb-0.text-base.leading-normal")
+            val description = descEl?.text()?.ifBlank { null }
+
+            val authorEl = card.selectFirst("p.font-sans.text-base.opacity-60")
+            val author = authorEl?.text()?.ifBlank { null }
+
+            val imgEl = card.selectFirst("img[src]")
+            val heroImage = imgEl?.let { extractSrc(it) }
+
+            val categoryEl = card.selectFirst("span.line-clamp-1")
+            val category = categoryEl?.text()?.ifBlank { null }
+
+            ArticleSummary(
+                url = url,
+                title = title,
+                description = description,
+                author = author,
+                category = category,
+                heroImageUrl = heroImage,
+                estimatedReadingTimeMinutes = 0,
+                cachedAt = null
+            )
+        }
     }
 
     private fun extractBodyBlocks(doc: Element): List<ContentBlock> {
@@ -447,7 +486,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             }
         }
         return buildString {
-            appendLine("@cache_version=3")
+            appendLine("@cache_version=4")
             appendLine(escape(article.url))
             appendLine(escape(article.title))
             appendLine(escape(article.description ?: ""))
@@ -458,6 +497,21 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             appendLine(escape(article.heroImageUrl ?: ""))
             appendLine(article.wordCount.toString())
             append(bodyJson)
+            if (article.relatedArticles.isNotEmpty()) {
+                append("\n")
+                appendLine("@related_start")
+                for (related in article.relatedArticles) {
+                    appendLine(listOf(
+                        escape(related.url),
+                        escape(related.title),
+                        escape(related.description ?: ""),
+                        escape(related.author ?: ""),
+                        escape(related.heroImageUrl ?: ""),
+                        escape(related.category ?: "")
+                    ).joinToString("\t"))
+                }
+                append("@related_end")
+            }
         }
     }
 
@@ -481,7 +535,14 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             val category = unescape(lines[7]).ifEmpty { null }
             val heroImageUrl = unescape(lines[8]).ifEmpty { null }
             val wordCount = lines[9].toIntOrNull() ?: 0
-            val bodyJson = lines.drop(10).joinToString("\n")
+
+            val relatedStartIndex = lines.indexOf("@related_start")
+            val bodyJsonLines = if (relatedStartIndex >= 0) {
+                lines.subList(10, relatedStartIndex)
+            } else {
+                lines.drop(10)
+            }
+            val bodyJson = bodyJsonLines.joinToString("\n")
 
             val bodyBlocks = if (bodyJson.isNotEmpty()) {
                 bodyJson.split("|").mapNotNull { block ->
@@ -503,6 +564,32 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 emptyList()
             }
 
+            val relatedArticles = if (relatedStartIndex >= 0) {
+                val relatedEndIndex = lines.indexOf("@related_end")
+                val relatedLines = if (relatedEndIndex > relatedStartIndex) {
+                    lines.subList(relatedStartIndex + 1, relatedEndIndex)
+                } else {
+                    emptyList<String>()
+                }
+                relatedLines.mapNotNull { line ->
+                    val parts = line.split("\t", limit = 6)
+                    if (parts.size >= 6) {
+                        ArticleSummary(
+                            url = unescape(parts[0]),
+                            title = unescape(parts[1]),
+                            description = unescape(parts[2]).ifEmpty { null },
+                            author = unescape(parts[3]).ifEmpty { null },
+                            heroImageUrl = unescape(parts[4]).ifEmpty { null },
+                            category = unescape(parts[5]).ifEmpty { null },
+                            estimatedReadingTimeMinutes = 0,
+                            cachedAt = null
+                        )
+                    } else null
+                }.filterNotNull()
+            } else {
+                emptyList()
+            }
+
             Result.success(
                 Article(
                     url = url,
@@ -514,7 +601,8 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     category = category,
                     heroImageUrl = heroImageUrl,
                     bodyBlocks = bodyBlocks,
-                    wordCount = wordCount
+                    wordCount = wordCount,
+                    relatedArticles = relatedArticles
                 )
             )
         } catch (e: Exception) {

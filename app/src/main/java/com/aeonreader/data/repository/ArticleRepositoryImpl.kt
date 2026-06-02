@@ -134,11 +134,11 @@ class ArticleRepositoryImpl @Inject constructor(
 
 private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article? {
     val deserialized = parser.deserialize(bodyJson)
-    val blocks = deserialized.getOrNull()?.bodyBlocks ?: return null
+    val result = deserialized.getOrNull() ?: return null
     return Article(
         url = url,
         title = title,
-        description = deserialized.getOrNull()?.description,
+        description = result.description,
         author = author,
         authorBio = authorBio,
         publicationDate = publicationDate?.let {
@@ -146,8 +146,9 @@ private fun ArticleEntity.toDomainArticle(parser: AeonParser): Article? {
         },
         category = category,
         heroImageUrl = heroImageUrl,
-        bodyBlocks = blocks,
-        wordCount = wordCount
+        bodyBlocks = result.bodyBlocks,
+        wordCount = wordCount,
+        relatedArticles = result.relatedArticles
     )
 }
 

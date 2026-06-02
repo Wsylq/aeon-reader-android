@@ -31,6 +31,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private val READING_IMMERSIVE_MODE = booleanPreferencesKey("reading_immersive_mode")
         private val READING_THEME = stringPreferencesKey("reading_theme")
         private val READING_MOTION_BLUR = booleanPreferencesKey("reading_motion_blur")
+        private val READING_SHOW_RELATED = booleanPreferencesKey("reading_show_related")
     }
 
     override val selectedCategory: Flow<String> = context.dataStore.data.map { prefs ->
@@ -51,6 +52,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val immersiveMode = prefs[READING_IMMERSIVE_MODE] ?: false
         val themeName = prefs[READING_THEME] ?: "DEFAULT"
         val motionBlur = prefs[READING_MOTION_BLUR] ?: true
+        val showRelated = prefs[READING_SHOW_RELATED] ?: true
         val font = try { ReadingFont.valueOf(fontName) } catch (_: Exception) { ReadingFont.SANS }
         val theme = try { ReadingTheme.valueOf(themeName) } catch (_: Exception) { ReadingTheme.DEFAULT }
         ReadingPreferences(
@@ -58,7 +60,8 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             fontSize = fontSize,
             isImmersiveMode = immersiveMode,
             theme = theme,
-            isMotionBlurEnabled = motionBlur
+            isMotionBlurEnabled = motionBlur,
+            showRelatedArticles = showRelated
         )
     }
 
@@ -85,6 +88,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             stored[READING_IMMERSIVE_MODE] = prefs.isImmersiveMode
             stored[READING_THEME] = prefs.theme.name
             stored[READING_MOTION_BLUR] = prefs.isMotionBlurEnabled
+            stored[READING_SHOW_RELATED] = prefs.showRelatedArticles
         }
     }
 }

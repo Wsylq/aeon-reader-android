@@ -25,7 +25,8 @@ data class Article(
     val category: String?,
     val heroImageUrl: String?,
     val bodyBlocks: List<ContentBlock>,
-    val wordCount: Int
+    val wordCount: Int,
+    val relatedArticles: List<ArticleSummary> = emptyList()
 )
 
 sealed class ContentBlock {
@@ -70,5 +71,6 @@ data class ReadingPreferences(
     val fontSize: Int = 16,
     val isImmersiveMode: Boolean = false,
     val theme: ReadingTheme = ReadingTheme.DEFAULT,
-    val isMotionBlurEnabled: Boolean = true
+    val isMotionBlurEnabled: Boolean = true,
+    val showRelatedArticles: Boolean = true
 )

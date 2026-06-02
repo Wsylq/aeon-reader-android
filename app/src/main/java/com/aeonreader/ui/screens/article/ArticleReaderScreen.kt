@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -86,8 +88,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.domain.Article
+import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.ContentBlock
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
@@ -149,6 +154,7 @@ fun readerColors(theme: ReadingTheme, scheme: ColorScheme): ReaderColors {
 fun ArticleReaderScreen(
     articleUrl: String,
     onBack: () -> Unit,
+    onArticleClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ArticleViewModel = hiltViewModel()
 ) {
@@ -186,9 +192,94 @@ fun ArticleReaderScreen(
                 initialProgress = state.readingProgress,
                 onToggleBookmark = { viewModel.toggleBookmark() },
                 onProgressUpdate = { viewModel.updateProgress(it) },
+                onArticleClick = onArticleClick,
                 modifier = modifier,
                 viewModel = viewModel
             )
+        }
+    }
+}
+
+@Composable
+private fun RelatedArticlesSection(
+    relatedArticles: List<ArticleSummary>,
+    onArticleClick: (String) -> Unit,
+    colors: ReaderColors,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(horizontal = 16.dp)) {
+        HorizontalDivider(color = colors.outlineVariant)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Related Articles",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = colors.text
+            )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        relatedArticles.forEach { related ->
+            RelatedArticleCard(
+                article = related,
+                onClick = { onArticleClick(related.url) },
+                colors = colors
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun RelatedArticleCard(
+    article: ArticleSummary,
+    onClick: () -> Unit,
+    colors: ReaderColors,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = colors.background),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(modifier = Modifier.padding(12.dp)) {
+            if (article.heroImageUrl != null) {
+                val context = LocalContext.current
+                val imageRequest = remember(article.heroImageUrl) {
+                    ImageRequest.Builder(context)
+                        .data(article.heroImageUrl)
+                        .crossfade(false)
+                        .size(200)
+                        .build()
+                }
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = article.title,
+                    modifier = Modifier
+                        .size(width = 80.dp, height = 60.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.text,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (article.author != null) {
+                    Text(
+                        text = article.author,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textDim,
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }
@@ -201,6 +292,7 @@ private fun ArticleReaderContent(
     initialProgress: Int?,
     onToggleBookmark: () -> Unit,
     onProgressUpdate: (Int) -> Unit,
+    onArticleClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ArticleViewModel
 ) {
@@ -435,7 +527,20 @@ private fun ArticleReaderContent(
 
                 item {
                     Spacer(modifier = Modifier.height(48.dp))
-            }
+                }
+
+                if (readingPrefs.showRelatedArticles && article.relatedArticles.isNotEmpty()) {
+                    item {
+                        RelatedArticlesSection(
+                            relatedArticles = article.relatedArticles,
+                            onArticleClick = onArticleClick,
+                            colors = colors
+                        )
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
+                }
         }
     }
 

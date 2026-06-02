@@ -31,6 +31,7 @@ import com.aeonreader.ui.screens.feed.FeedScreen
 import com.aeonreader.ui.screens.search.SearchScreen
 import com.aeonreader.ui.screens.settings.SettingsScreen
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 data class BottomNavItem(
@@ -136,7 +137,10 @@ fun AeonNavHost(
                 val url = URLDecoder.decode(encoded, StandardCharsets.UTF_8.toString())
                 ArticleReaderScreen(
                     articleUrl = url,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onArticleClick = { articleUrl ->
+                        navController.navigate("article/${URLEncoder.encode(articleUrl, StandardCharsets.UTF_8.toString())}")
+                    }
                 )
             }
         }
