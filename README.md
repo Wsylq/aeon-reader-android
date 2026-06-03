@@ -60,4 +60,5 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [ ] Text-to-speech (read aloud)
 - [x] App shortcuts (long-press launcher icon)
 - [x] Reading themes (sepia, green-tinted paper)
-- [ ] Fix read time of articles on feed page
+- [x] Fix read time of articles on feed page
+- [ ] Make an endpoint api like MAL for tracking and retrieving user's data of read articles and all. 
