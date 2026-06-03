@@ -192,6 +192,9 @@ class ArticleRemoteMediator(
             }
 
             val now = System.currentTimeMillis()
+            val existingTimestamps = articleDao.getSummaryTimestamps(
+                summaries.map { it.url }
+            ).associate { it.url to it.cachedAt }
             val entities = summaries.mapIndexed { index, summary ->
                 ArticleSummaryEntity(
                     url = summary.url,
@@ -201,7 +204,7 @@ class ArticleRemoteMediator(
                     category = summary.category,
                     heroImageUrl = summary.heroImageUrl,
                     estimatedReadingTimeMinutes = summary.estimatedReadingTimeMinutes,
-                    cachedAt = now,
+                    cachedAt = existingTimestamps[summary.url] ?: now,
                     lastAccessedAt = now,
                     page = page,
                     pageOrder = index

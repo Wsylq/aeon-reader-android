@@ -5,6 +5,11 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+data class UrlTimestamp(
+    val url: String,
+    val cachedAt: Long
+)
+
 @Immutable
 @Entity(
     tableName = "article_summaries",

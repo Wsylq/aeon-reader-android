@@ -15,6 +15,9 @@ interface ArticleDao {
     @Query("SELECT * FROM article_summaries WHERE category = :category ORDER BY pageOrder ASC")
     fun getSummariesByCategory(category: String): PagingSource<Int, ArticleSummaryEntity>
 
+    @Query("SELECT url, cachedAt FROM article_summaries WHERE url IN (:urls)")
+    suspend fun getSummaryTimestamps(urls: List<String>): List<UrlTimestamp>
+
     @Query("SELECT * FROM article_summaries ORDER BY pageOrder ASC")
     fun getAllSummaries(): PagingSource<Int, ArticleSummaryEntity>
 
