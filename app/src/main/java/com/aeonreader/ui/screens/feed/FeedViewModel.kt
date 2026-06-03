@@ -25,8 +25,7 @@ sealed interface FeedUiState {
         val articles: Flow<PagingData<ArticleSummaryEntity>>,
         val categories: List<String>,
         val selectedCategory: String,
-        val isOffline: Boolean,
-        val cachedArticleUrls: Set<String> = emptySet()
+        val isOffline: Boolean
     ) : FeedUiState
     data class Error(val message: String) : FeedUiState
 }
@@ -40,11 +39,13 @@ class FeedViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<FeedUiState>(FeedUiState.Loading)
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
+    private val _cachedUrls = MutableStateFlow<Set<String>>(emptySet())
+    val cachedUrls: StateFlow<Set<String>> = _cachedUrls.asStateFlow()
+
     private var categories: List<String> = emptyList()
     private var selectedCategory: String = "all"
     private var isOffline: Boolean = false
     private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
-    private var cachedUrls: Set<String> = emptySet()
     private var combineJob: Job? = null
 
     init {
@@ -89,7 +90,7 @@ class FeedViewModel @Inject constructor(
                 Pair(!isOnline, urls)
             }.distinctUntilChanged().collect { (offline, urls) ->
                 isOffline = offline
-                cachedUrls = urls
+                _cachedUrls.value = urls
                 emitCurrentState()
             }
         }
@@ -102,8 +103,7 @@ class FeedViewModel @Inject constructor(
                 articles = flow,
                 categories = categories,
                 selectedCategory = selectedCategory,
-                isOffline = isOffline,
-                cachedArticleUrls = cachedUrls
+                isOffline = isOffline
             )
         } else {
             _uiState.value = FeedUiState.Loading

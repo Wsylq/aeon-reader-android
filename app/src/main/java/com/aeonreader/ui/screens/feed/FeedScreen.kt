@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +58,7 @@ fun FeedScreen(
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val cachedUrls by viewModel.cachedUrls.collectAsState()
 
     when (val state = uiState) {
         is FeedUiState.Loading -> {
@@ -82,6 +84,7 @@ fun FeedScreen(
         is FeedUiState.Success -> {
             FeedContent(
                 state = state,
+                cachedUrls = cachedUrls,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
@@ -96,6 +99,7 @@ fun FeedScreen(
 @Composable
 private fun FeedContent(
     state: FeedUiState.Success,
+    cachedUrls: Set<String>,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
@@ -139,8 +143,9 @@ private fun FeedContent(
 
             items(pagingItems.itemCount, key = itemKey) { index ->
                 pagingItems[index]?.let { entity ->
-                    val onClick = remember(entity.url, onArticleClick) { { onArticleClick(entity.url) } }
-                    val isOffline = state.isOffline && state.cachedArticleUrls.contains(entity.url)
+                    val currentOnClick = rememberUpdatedState(onArticleClick)
+                    val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
+                    val isOffline = state.isOffline && cachedUrls.contains(entity.url)
                     ArticleCard(
                         summary = entity.toArticleSummary(),
                         onClick = onClick,

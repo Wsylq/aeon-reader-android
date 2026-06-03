@@ -348,18 +348,16 @@ private fun ArticleReaderContent(
         }
     }
 
-    val motionBlurEffect = remember {
-        derivedStateOf {
-            if (Build.VERSION.SDK_INT >= 31 && readingPrefs.isMotionBlurEnabled && listState.isScrollInProgress)
-                BlurEffect(0f, 8f, TileMode.Clamp)
-            else null
-        }
-    }
+    val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
+    val blurModifier = if (Build.VERSION.SDK_INT >= 31 && readingPrefs.isMotionBlurEnabled && isScrolling)
+        Modifier.graphicsLayer { renderEffect = BlurEffect(0f, 8f, TileMode.Clamp) }
+    else
+        Modifier
 
     val definition by viewModel.definition.collectAsState()
     val highlightedWords by viewModel.highlightedWords.collectAsState()
 
-    Column(modifier = modifier.fillMaxSize().background(colors.background).graphicsLayer { renderEffect = motionBlurEffect.value }) {
+    Column(modifier = modifier.fillMaxSize().background(colors.background).then(blurModifier)) {
         if (!readingPrefs.isImmersiveMode) {
             LinearProgressIndicator(
                 progress = {
