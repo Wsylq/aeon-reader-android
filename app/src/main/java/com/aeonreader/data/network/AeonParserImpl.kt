@@ -55,10 +55,6 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 val imgEl = card.selectFirst("img[src]")
                 val heroImage = imgEl?.let { extractSrc(it) }
 
-                val textContent = card.text()
-                val wordCount = textContent.split("\\s+".toRegex()).size
-                val readingTime = ceil(wordCount / 200.0).toInt().coerceAtLeast(1)
-
                 ArticleSummary(
                     url = url,
                     title = title,
@@ -66,7 +62,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     author = author,
                     category = null,
                     heroImageUrl = heroImage,
-                    estimatedReadingTimeMinutes = readingTime,
+                    estimatedReadingTimeMinutes = estimateReadingTime(title, description ?: fallbackDesc),
                     cachedAt = null
                 )
             }
@@ -108,10 +104,6 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 t.length > 15 && p.select("img, a").isEmpty()
             }
             val snippet = descParas.firstOrNull()?.text()?.ifBlank { null }
-            val textContent = "$title ${snippet ?: ""}"
-            val wordCount = textContent.split("\\s+".toRegex()).size
-            val readingTime = ceil(wordCount / 200.0).toInt().coerceAtLeast(1)
-
             ArticleSummary(
                 url = url,
                 title = title,
@@ -119,7 +111,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 author = author,
                 category = null,
                 heroImageUrl = heroImage,
-                estimatedReadingTimeMinutes = readingTime,
+                estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
                 cachedAt = null
             )
         }
@@ -253,7 +245,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 author = author,
                 category = category,
                 heroImageUrl = heroImage,
-                estimatedReadingTimeMinutes = 0,
+                estimatedReadingTimeMinutes = estimateReadingTime(title, description),
                 cachedAt = null
             )
         }
@@ -357,10 +349,6 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     val parent = link.parent()
                     val snippet = parent?.nextElementSibling()?.text()?.ifBlank { null }
 
-                    val textContent = "$title ${snippet ?: ""}"
-                    val wordCount = textContent.split("\\s+".toRegex()).size
-                    val readingTime = ceil(wordCount / 200.0).toInt().coerceAtLeast(1)
-
                     ArticleSummary(
                         url = url,
                         title = title,
@@ -368,7 +356,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                         author = null,
                         category = null,
                         heroImageUrl = null,
-                        estimatedReadingTimeMinutes = readingTime,
+                        estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
                         cachedAt = null
                     )
                 }
@@ -394,9 +382,6 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 val title = obj.optString("title", "")
                 if (title.isBlank()) continue
                 val summary = obj.optString("summary", "") ?: ""
-                val textContent = "$title $summary"
-                val wordCount = textContent.split("\\s+".toRegex()).size
-                val readingTime = ceil(wordCount / 200.0).toInt().coerceAtLeast(1)
                     val imageUrl = obj.optString("image_url", "")?.ifBlank { null }
                     results.add(
                         ArticleSummary(
@@ -406,7 +391,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                             author = null,
                             category = null,
                             heroImageUrl = imageUrl,
-                            estimatedReadingTimeMinutes = readingTime,
+                            estimatedReadingTimeMinutes = estimateReadingTime(title, summary.ifBlank { null }),
                             cachedAt = null
                         )
                     )
@@ -433,9 +418,6 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 if (url in seen) return@mapNotNull null
                 seen.add(url)
                 val snippet = li.selectFirst("p.s")?.text()?.ifBlank { null }
-                val textContent = "$title ${snippet ?: ""}"
-                val wordCount = textContent.split("\\s+".toRegex()).size
-                val readingTime = ceil(wordCount / 200.0).toInt().coerceAtLeast(1)
                 ArticleSummary(
                     url = url,
                     title = title,
@@ -443,7 +425,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     author = null,
                     category = null,
                     heroImageUrl = null,
-                    estimatedReadingTimeMinutes = readingTime,
+                    estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
                     cachedAt = null
                 )
             }
@@ -455,6 +437,17 @@ class AeonParserImpl @Inject constructor() : AeonParser {
         } catch (e: Exception) {
             Result.failure(Exception("Failed to parse Mojeek results: ${e.message}", e))
         }
+    }
+
+    private fun estimateReadingTime(title: String?, description: String?): Int {
+        val text = if (description != null && description.length > 10) {
+            description
+        } else {
+            title ?: ""
+        }
+        val wordCount = text.split("\\s+".toRegex()).size
+        val estimatedArticleWords = wordCount * 15
+        return ceil(estimatedArticleWords / 200.0).toInt().coerceAtLeast(5)
     }
 
     override fun parseCategories(html: String): Result<List<String>> {
@@ -575,14 +568,17 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 relatedLines.mapNotNull { line ->
                     val parts = line.split("\t", limit = 6)
                     if (parts.size >= 6) {
+                        val rUrl = unescape(parts[0])
+                        val rTitle = unescape(parts[1])
+                        val rDesc = unescape(parts[2]).ifEmpty { null }
                         ArticleSummary(
-                            url = unescape(parts[0]),
-                            title = unescape(parts[1]),
-                            description = unescape(parts[2]).ifEmpty { null },
+                            url = rUrl,
+                            title = rTitle,
+                            description = rDesc,
                             author = unescape(parts[3]).ifEmpty { null },
                             heroImageUrl = unescape(parts[4]).ifEmpty { null },
                             category = unescape(parts[5]).ifEmpty { null },
-                            estimatedReadingTimeMinutes = 0,
+                            estimatedReadingTimeMinutes = estimateReadingTime(rTitle, rDesc),
                             cachedAt = null
                         )
                     } else null

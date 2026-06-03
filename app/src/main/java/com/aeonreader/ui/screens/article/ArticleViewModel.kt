@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.net.UnknownHostException
 import javax.inject.Inject
+import kotlin.math.ceil
 
     sealed interface ArticleUiState {
         data object Loading : ArticleUiState
@@ -117,7 +118,7 @@ class ArticleViewModel @Inject constructor(
                     author = state.article.author,
                     category = state.article.category,
                     heroImageUrl = state.article.heroImageUrl,
-                    estimatedReadingTimeMinutes = state.article.wordCount,
+                    estimatedReadingTimeMinutes = ceil(state.article.wordCount / 200.0).toInt().coerceAtLeast(1),
                     cachedAt = null
                 )
                 if (state.isBookmarked) {

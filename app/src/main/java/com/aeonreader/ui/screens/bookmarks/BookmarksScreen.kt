@@ -17,6 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,10 +28,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +51,7 @@ fun BookmarksScreen(
     viewModel: BookmarksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var bookmarkToDelete by remember { mutableStateOf<Bookmark?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshProgress()
@@ -79,12 +87,66 @@ fun BookmarksScreen(
                         BookmarkItem(
                             bookmark = bookmark,
                             onClick = { onArticleClick(bookmark.articleUrl) },
-                            onDelete = { viewModel.deleteBookmark(bookmark.articleUrl) }
+                            onDelete = { bookmarkToDelete = bookmark }
                         )
                     }
                 }
             }
         }
+    }
+
+    bookmarkToDelete?.let { bookmark ->
+        AlertDialog(
+            onDismissRequest = { bookmarkToDelete = null },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(
+                    text = "Delete Bookmark",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column {
+                    Text("Are you sure you want to remove this bookmark?")
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = bookmark.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "You can bookmark it again later.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteBookmark(bookmark.articleUrl)
+                        bookmarkToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { bookmarkToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
