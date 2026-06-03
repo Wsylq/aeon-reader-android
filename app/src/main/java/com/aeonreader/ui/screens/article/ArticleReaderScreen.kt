@@ -46,7 +46,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -62,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -82,11 +80,13 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import android.os.Build
-import android.graphics.RenderEffect
-import android.graphics.Shader
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -348,29 +348,18 @@ private fun ArticleReaderContent(
         }
     }
 
-    val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
-    val rootView = LocalView.current
-    val hasMotionBlur = readingPrefs.isMotionBlurEnabled
-    DisposableEffect(isScrolling, hasMotionBlur) {
-        if (Build.VERSION.SDK_INT >= 31 && hasMotionBlur) {
-            rootView.setRenderEffect(
-                if (isScrolling)
-                    RenderEffect.createBlurEffect(0f, 8f, Shader.TileMode.CLAMP)
-                else
-                    null
-            )
-        } else if (Build.VERSION.SDK_INT >= 31) {
-            rootView.setRenderEffect(null)
-        }
-        onDispose {
-            if (Build.VERSION.SDK_INT >= 31) rootView.setRenderEffect(null)
+    val motionBlurEffect = remember {
+        derivedStateOf {
+            if (Build.VERSION.SDK_INT >= 31 && readingPrefs.isMotionBlurEnabled && listState.isScrollInProgress)
+                BlurEffect(0f, 8f, TileMode.Clamp)
+            else null
         }
     }
 
     val definition by viewModel.definition.collectAsState()
     val highlightedWords by viewModel.highlightedWords.collectAsState()
 
-    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
+    Column(modifier = modifier.fillMaxSize().background(colors.background).graphicsLayer { renderEffect = motionBlurEffect.value }) {
         if (!readingPrefs.isImmersiveMode) {
             LinearProgressIndicator(
                 progress = {

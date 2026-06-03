@@ -300,7 +300,7 @@ fun ArticleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "${summary.estimatedReadingTimeMinutes} min read",
+                    text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min read",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
