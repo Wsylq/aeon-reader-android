@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,12 +21,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -83,7 +82,6 @@ fun FeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val feedLayout by viewModel.feedLayout.collectAsState()
-    val bookmarkedUrls by viewModel.bookmarkedUrls.collectAsState()
 
     when (val state = uiState) {
         is FeedUiState.Loading -> {
@@ -110,12 +108,12 @@ fun FeedScreen(
             FeedContent(
                 state = state,
                 feedLayout = feedLayout,
-                bookmarkedUrls = bookmarkedUrls,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
                 onToggleLayout = { viewModel.toggleLayout() },
                 onToggleBookmark = { viewModel.toggleBookmark(it) },
+                viewModel = viewModel,
                 modifier = modifier
             )
         }
@@ -126,17 +124,18 @@ fun FeedScreen(
 private fun FeedContent(
     state: FeedUiState.Success,
     feedLayout: FeedLayout,
-    bookmarkedUrls: Set<String>,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onToggleLayout: () -> Unit,
     onToggleBookmark: (ArticleSummary) -> Unit,
+    viewModel: FeedViewModel,
     modifier: Modifier = Modifier
 ) {
-    val pagingItems = state.articles.collectAsLazyPagingItems()
+    val articlesFlow = remember(state.articles) { state.articles }
+    val pagingItems = articlesFlow.collectAsLazyPagingItems()
 
-    val footer: @Composable () -> Unit = {
+    val footer: @Composable () -> Unit = remember(pagingItems) { {
         pagingItems.loadState.append.let { loadState ->
             when (loadState) {
                 is LoadState.Loading -> {
@@ -167,7 +166,7 @@ private fun FeedContent(
                 else -> {}
             }
         }
-    }
+    } }
 
     Column(modifier = modifier.fillMaxSize()) {
         key("header") {
@@ -207,7 +206,7 @@ private fun FeedContent(
                         val swipeLeft = index % 2 == 0
                         SwipeableFeedItem(
                             summary = summary,
-                            isBookmarked = bookmarkedUrls.contains(summary.url),
+                            viewModel = viewModel,
                             swipeDirection = if (swipeLeft) 0 else 1,
                             onClick = { onArticleClick(summary.url) },
                             onBookmark = { onToggleBookmark(summary) }
@@ -227,7 +226,7 @@ private fun FeedContent(
                     pagingItems[index]?.let { summary ->
                         SwipeableFeedItem(
                             summary = summary,
-                            isBookmarked = bookmarkedUrls.contains(summary.url),
+                            viewModel = viewModel,
                             swipeDirection = 1,
                             onClick = { onArticleClick(summary.url) },
                             onBookmark = { onToggleBookmark(summary) }
@@ -250,20 +249,20 @@ fun CategoryChipRow(
     onCategorySelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
-    Row(
+    LazyRow(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(scrollState)
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        FilterChip(
-            selected = selectedCategory == "all",
-            onClick = { onCategorySelect("all") },
-            label = { Text("All") }
-        )
-        categories.forEach { category ->
+        item(key = "all") {
+            FilterChip(
+                selected = selectedCategory == "all",
+                onClick = { onCategorySelect("all") },
+                label = { Text("All") }
+            )
+        }
+        items(categories, key = { it }) { category ->
             FilterChip(
                 selected = selectedCategory == category,
                 onClick = { onCategorySelect(category) },
@@ -384,7 +383,7 @@ fun ArticleCard(
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    isBookmarked: Boolean,
+    viewModel: FeedViewModel,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
@@ -396,6 +395,10 @@ private fun SwipeableFeedItem(
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
+    val bookmarks by viewModel.bookmarkedUrls.collectAsState()
+    val isBookmarked by remember(summary.url) {
+        derivedStateOf { bookmarks.contains(summary.url) }
+    }
     val showStar by remember {
         derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f }
     }

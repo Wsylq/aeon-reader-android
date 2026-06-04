@@ -1,10 +1,12 @@
 package com.aeonreader.domain
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import java.time.Instant
 import java.time.LocalDate
 
 @Immutable
+@Stable
 data class ArticleSummary(
     val url: String,
     val title: String,
