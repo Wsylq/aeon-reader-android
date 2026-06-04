@@ -325,7 +325,9 @@ private fun ArticleGridCard(
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val imageWidthPx = remember(density, configuration) {
-        with(density) { ((configuration.screenWidthDp.dp / 2).toPx()).toInt() }
+        with(density) {
+            minOf((configuration.screenWidthDp.dp / 2), 300.dp).toPx().toInt()
+        }
     }
 
     Column(
@@ -342,7 +344,8 @@ private fun ArticleGridCard(
                     .size(imageWidthPx)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(100)
+                    .crossfade(75)
+                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                     .build()
             }
             AsyncImage(
