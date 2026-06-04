@@ -59,6 +59,7 @@ fun FeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val cachedUrls by viewModel.cachedUrls.collectAsState()
+    val isOffline by viewModel.isOffline.collectAsState()
 
     when (val state = uiState) {
         is FeedUiState.Loading -> {
@@ -85,6 +86,7 @@ fun FeedScreen(
             FeedContent(
                 state = state,
                 cachedUrls = cachedUrls,
+                isOffline = isOffline,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
@@ -100,6 +102,7 @@ fun FeedScreen(
 private fun FeedContent(
     state: FeedUiState.Success,
     cachedUrls: Set<String>,
+    isOffline: Boolean,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
@@ -145,11 +148,12 @@ private fun FeedContent(
                 pagingItems[index]?.let { entity ->
                     val currentOnClick = rememberUpdatedState(onArticleClick)
                     val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
-                    val isOffline = state.isOffline && cachedUrls.contains(entity.url)
+                    val isOfflineAvailable = isOffline && cachedUrls.contains(entity.url)
+                    val summary = remember(entity.url, entity) { entity.toArticleSummary() }
                     ArticleCard(
-                        summary = entity.toArticleSummary(),
+                        summary = summary,
                         onClick = onClick,
-                        isOfflineAvailable = isOffline
+                        isOfflineAvailable = isOfflineAvailable
                     )
                 }
             }

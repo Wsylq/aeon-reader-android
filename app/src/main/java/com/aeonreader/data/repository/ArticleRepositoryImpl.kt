@@ -207,7 +207,7 @@ class ArticleRemoteMediator(
                     cachedAt = existingTimestamps[summary.url] ?: now,
                     lastAccessedAt = now,
                     page = page,
-                    pageOrder = index
+                    pageOrder = (page - 1) * state.config.pageSize + index
                 )
             }
 

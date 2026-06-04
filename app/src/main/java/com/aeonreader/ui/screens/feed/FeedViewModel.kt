@@ -24,8 +24,7 @@ sealed interface FeedUiState {
     data class Success(
         val articles: Flow<PagingData<ArticleSummaryEntity>>,
         val categories: List<String>,
-        val selectedCategory: String,
-        val isOffline: Boolean
+        val selectedCategory: String
     ) : FeedUiState
     data class Error(val message: String) : FeedUiState
 }
@@ -42,9 +41,11 @@ class FeedViewModel @Inject constructor(
     private val _cachedUrls = MutableStateFlow<Set<String>>(emptySet())
     val cachedUrls: StateFlow<Set<String>> = _cachedUrls.asStateFlow()
 
+    private val _isOffline = MutableStateFlow(false)
+    val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
+
     private var categories: List<String> = emptyList()
     private var selectedCategory: String = "all"
-    private var isOffline: Boolean = false
     private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
     private var combineJob: Job? = null
 
@@ -76,6 +77,12 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Rebuilds the paging flow for [category] and restarts the network/cache
+     * status observer. Does NOT touch [_uiState] — callers are responsible for
+     * updating state before/after this call so that Loading / Success sequencing
+     * is controlled at the call site.
+     */
     private fun loadFeed(category: String) {
         pagingFlow = articleRepository.getFeedPager(
             if (category == "all") null else category
@@ -89,9 +96,8 @@ class FeedViewModel @Inject constructor(
             ) { isOnline, urls ->
                 Pair(!isOnline, urls)
             }.distinctUntilChanged().collect { (offline, urls) ->
-                isOffline = offline
+                _isOffline.value = offline
                 _cachedUrls.value = urls
-                emitCurrentState()
             }
         }
     }
@@ -99,11 +105,21 @@ class FeedViewModel @Inject constructor(
     private fun emitCurrentState() {
         val flow = pagingFlow
         if (flow != null) {
+            val current = _uiState.value
+            // Guard against redundant emissions: only update state if articles, categories,
+            // or selectedCategory has actually changed. Flow references are compared with
+            // referential equality (===) because Flow does not implement structural equality.
+            if (current is FeedUiState.Success &&
+                current.articles === flow &&
+                current.categories == categories &&
+                current.selectedCategory == selectedCategory
+            ) {
+                return
+            }
             _uiState.value = FeedUiState.Success(
                 articles = flow,
                 categories = categories,
-                selectedCategory = selectedCategory,
-                isOffline = isOffline
+                selectedCategory = selectedCategory
             )
         } else {
             _uiState.value = FeedUiState.Loading
@@ -122,5 +138,8 @@ class FeedViewModel @Inject constructor(
             userPreferencesRepository.setSelectedCategory(category)
         }
         loadFeed(category)
+        // Emit the updated state immediately so the new articles flow reference is
+        // reflected in uiState right away (without waiting for a network/cache tick).
+        emitCurrentState()
     }
 }
