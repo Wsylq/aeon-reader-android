@@ -51,7 +51,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override val feedLayout: Flow<FeedLayout> = context.dataStore.data.map { prefs ->
         when (prefs[FEED_LAYOUT]) {
             "GRID" -> FeedLayout.GRID
-            else -> FeedLayout.LIST
+            else -> FeedLayout.GRID
         }
     }
 
@@ -66,7 +66,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val fontSize = prefs[READING_FONT_SIZE] ?: 16
         val immersiveMode = prefs[READING_IMMERSIVE_MODE] ?: false
         val themeName = prefs[READING_THEME] ?: "DEFAULT"
-        val motionBlur = prefs[READING_MOTION_BLUR] ?: true
+        val motionBlur = prefs[READING_MOTION_BLUR] ?: false
         val showRelated = prefs[READING_SHOW_RELATED] ?: true
         val font = try { ReadingFont.valueOf(fontName) } catch (_: Exception) { ReadingFont.SANS }
         val theme = try { ReadingTheme.valueOf(themeName) } catch (_: Exception) { ReadingTheme.DEFAULT }
