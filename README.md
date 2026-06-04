@@ -58,7 +58,8 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [ ] Export articles as PDF / plain text
 - [ ] OPML export
 - [ ] Text-to-speech (read aloud)
-- [x] App shortcuts (long-press launcher icon)
+- [x] App shortcuts (long-press launcher icon) -- 
+  - [ ] App isnt installed error
 - [x] Reading themes (sepia, green-tinted paper)
 - [x] Fix read time of articles on feed page
 - [ ] Make an endpoint api like MAL for tracking and retrieving user's data of read articles and all. 

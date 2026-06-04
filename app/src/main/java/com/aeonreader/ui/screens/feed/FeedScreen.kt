@@ -22,16 +22,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -49,7 +48,6 @@ import coil.request.ImageRequest
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.domain.ArticleSummary
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
     onArticleClick: (String) -> Unit,
@@ -97,7 +95,6 @@ fun FeedScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FeedContent(
     state: FeedUiState.Success,
@@ -110,87 +107,82 @@ private fun FeedContent(
     modifier: Modifier = Modifier
 ) {
     val pagingItems = state.articles.collectAsLazyPagingItems()
-
-    PullToRefreshBox(
-        isRefreshing = pagingItems.loadState.refresh is LoadState.Loading,
-        onRefresh = onRefresh,
-        modifier = modifier
+    val itemKey = remember { { index: Int -> pagingItems[index]?.url ?: index } }
+    LazyColumn(
+        modifier = modifier.fillMaxSize()
     ) {
-        val itemKey = remember { { index: Int -> pagingItems[index]?.url ?: index } }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            item {
-                Row(
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CategoryChipRow(
+                    categories = state.categories,
+                    selectedCategory = state.selectedCategory,
+                    onCategorySelect = onCategorySelect,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CategoryChipRow(
-                        categories = state.categories,
-                        selectedCategory = state.selectedCategory,
-                        onCategorySelect = onCategorySelect,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                }
-            }
-
-            items(pagingItems.itemCount, key = itemKey) { index ->
-                pagingItems[index]?.let { entity ->
-                    val currentOnClick = rememberUpdatedState(onArticleClick)
-                    val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
-                    val isOfflineAvailable = isOffline && cachedUrls.contains(entity.url)
-                    val summary = remember(entity.url, entity) { entity.toArticleSummary() }
-                    ArticleCard(
-                        summary = summary,
-                        onClick = onClick,
-                        isOfflineAvailable = isOfflineAvailable
+                        .weight(1f)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Settings"
                     )
                 }
             }
+        }
 
-            pagingItems.loadState.append.let { loadState ->
-                when (loadState) {
-                    is LoadState.Loading -> {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            }
+        items(pagingItems.itemCount, key = itemKey) { index ->
+            pagingItems[index]?.let { entity ->
+                val currentOnClick = rememberUpdatedState(onArticleClick)
+                val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
+                val isOfflineAvailable by remember(entity.url, cachedUrls, isOffline) {
+                    derivedStateOf { isOffline && cachedUrls.contains(entity.url) }
+                }
+                val summary = remember(entity.url, entity) { entity.toArticleSummary() }
+                ArticleCard(
+                    summary = summary,
+                    onClick = onClick,
+                    isOfflineAvailable = isOfflineAvailable
+                )
+            }
+        }
+
+        pagingItems.loadState.append.let { loadState ->
+            when (loadState) {
+                is LoadState.Loading -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
                     }
-                    is LoadState.Error -> {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "Failed to load more articles",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Button(onClick = { pagingItems.retry() }) {
-                                        Text("Retry")
-                                    }
+                }
+                is LoadState.Error -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Failed to load more articles",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Button(onClick = { pagingItems.retry() }) {
+                                    Text("Retry")
                                 }
                             }
                         }
                     }
-                    else -> {}
                 }
+                else -> {}
             }
         }
     }
