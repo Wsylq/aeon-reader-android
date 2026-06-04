@@ -62,4 +62,5 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
   - [ ] App isnt installed error
 - [x] Reading themes (sepia, green-tinted paper)
 - [x] Fix read time of articles on feed page
-- [ ] Make an endpoint api like MAL for tracking and retrieving user's data of read articles and all. 
+- [ ] Make an endpoint api like MAL for tracking and retrieving user's data of read articles and all.
+- [ ] Fix a major lag spike while opening and closing articles.
