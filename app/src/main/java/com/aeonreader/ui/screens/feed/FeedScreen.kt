@@ -255,18 +255,6 @@ private fun ArticleRow(
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
-        if (summary.heroImageUrl != null) {
-            AsyncImage(
-                model = summary.heroImageUrl,
-                contentDescription = summary.title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                contentScale = ContentScale.Crop
-            )
-        }
-
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = summary.title,
