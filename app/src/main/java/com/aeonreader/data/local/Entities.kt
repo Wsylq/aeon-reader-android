@@ -13,7 +13,10 @@ data class UrlTimestamp(
 @Immutable
 @Entity(
     tableName = "article_summaries",
-    indices = [Index(value = ["pageOrder"], orders = [Index.Order.ASC])]
+    indices = [
+        Index(value = ["pageOrder"], orders = [Index.Order.ASC]),
+        Index(value = ["category"])
+    ]
 )
 data class ArticleSummaryEntity(
     @PrimaryKey val url: String,
