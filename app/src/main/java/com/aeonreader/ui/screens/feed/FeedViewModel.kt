@@ -6,7 +6,9 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.data.repository.ArticleRepository
+import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
+import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,10 +33,12 @@ sealed interface FeedUiState {
     data class Error(val message: String) : FeedUiState
 }
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val bookmarkRepository: BookmarkRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FeedUiState>(FeedUiState.Loading)
@@ -48,6 +53,9 @@ class FeedViewModel @Inject constructor(
     private val _feedLayout = MutableStateFlow(FeedLayout.LIST)
     val feedLayout: StateFlow<FeedLayout> = _feedLayout.asStateFlow()
 
+    private val _bookmarkedUrls = MutableStateFlow<Set<String>>(emptySet())
+    val bookmarkedUrls: StateFlow<Set<String>> = _bookmarkedUrls.asStateFlow()
+
     private var categories: List<String> = emptyList()
     private var selectedCategory: String = "all"
     private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
@@ -55,6 +63,25 @@ class FeedViewModel @Inject constructor(
 
     init {
         loadInitial()
+        observeBookmarks()
+    }
+
+    private fun observeBookmarks() {
+        viewModelScope.launch {
+            bookmarkRepository.observeBookmarks()
+                .map { bookmarks -> bookmarks.map { it.articleUrl }.toSet() }
+                .collect { urls -> _bookmarkedUrls.value = urls }
+        }
+    }
+
+    fun toggleBookmark(summary: ArticleSummary) {
+        viewModelScope.launch {
+            if (_bookmarkedUrls.value.contains(summary.url)) {
+                bookmarkRepository.removeBookmark(summary.url)
+            } else {
+                bookmarkRepository.addBookmark(summary)
+            }
+        }
     }
 
     private fun loadInitial() {

@@ -1,7 +1,14 @@
 package com.aeonreader.ui.screens.feed
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,9 +19,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -25,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -36,14 +44,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
@@ -52,6 +67,9 @@ import coil.compose.AsyncImage
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @Composable
 fun FeedScreen(
@@ -62,6 +80,7 @@ fun FeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val feedLayout by viewModel.feedLayout.collectAsState()
+    val bookmarkedUrls by viewModel.bookmarkedUrls.collectAsState()
 
     when (val state = uiState) {
         is FeedUiState.Loading -> {
@@ -88,10 +107,12 @@ fun FeedScreen(
             FeedContent(
                 state = state,
                 feedLayout = feedLayout,
+                bookmarkedUrls = bookmarkedUrls,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
                 onToggleLayout = { viewModel.toggleLayout() },
+                onToggleBookmark = { viewModel.toggleBookmark(it) },
                 modifier = modifier
             )
         }
@@ -102,10 +123,12 @@ fun FeedScreen(
 private fun FeedContent(
     state: FeedUiState.Success,
     feedLayout: FeedLayout,
+    bookmarkedUrls: Set<String>,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onToggleLayout: () -> Unit,
+    onToggleBookmark: (ArticleSummary) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagingItems = state.articles.collectAsLazyPagingItems()
@@ -181,10 +204,17 @@ private fun FeedContent(
 
             items(pagingItems.itemCount, key = itemKey) { index ->
                 pagingItems[index]?.let { entity ->
-                    val currentOnClick = rememberUpdatedState(onArticleClick)
-                    val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
                     val summary = remember(entity) { entity.toArticleSummary() }
-                    ArticleGridCard(summary = summary, onClick = onClick)
+                    val swipeLeft = index % 2 == 0
+                    SwipeableFeedItem(
+                        summary = summary,
+                        isBookmarked = bookmarkedUrls.contains(summary.url),
+                        swipeDirection = if (swipeLeft) 0 else 1,
+                        onClick = { onArticleClick(summary.url) },
+                        onBookmark = { onToggleBookmark(summary) }
+                    ) {
+                        ArticleGridCard(summary = summary)
+                    }
                 }
             }
 
@@ -198,10 +228,16 @@ private fun FeedContent(
 
             items(pagingItems.itemCount, key = itemKey, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { entity ->
-                    val currentOnClick = rememberUpdatedState(onArticleClick)
-                    val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
                     val summary = remember(entity) { entity.toArticleSummary() }
-                    ArticleRow(summary = summary, onClick = onClick)
+                    SwipeableFeedItem(
+                        summary = summary,
+                        isBookmarked = bookmarkedUrls.contains(summary.url),
+                        swipeDirection = 1,
+                        onClick = { onArticleClick(summary.url) },
+                        onBookmark = { onToggleBookmark(summary) }
+                    ) {
+                        ArticleRow(summary = summary)
+                    }
                 }
             }
 
@@ -243,7 +279,6 @@ fun CategoryChipRow(
 @Composable
 private fun ArticleRow(
     summary: ArticleSummary,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -253,7 +288,6 @@ private fun ArticleRow(
             .shadow(2.dp, RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -286,7 +320,6 @@ private fun ArticleRow(
 @Composable
 private fun ArticleGridCard(
     summary: ArticleSummary,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -295,7 +328,6 @@ private fun ArticleGridCard(
             .shadow(2.dp, RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
     ) {
         if (summary.heroImageUrl != null) {
             AsyncImage(
@@ -332,7 +364,88 @@ fun ArticleCard(
     isOfflineAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    ArticleRow(summary = summary, onClick = onClick, modifier = modifier)
+    ArticleRow(
+        summary = summary,
+        modifier = modifier.clickable(onClick = onClick)
+    )
+}
+
+@Composable
+private fun SwipeableFeedItem(
+    summary: ArticleSummary,
+    isBookmarked: Boolean,
+    swipeDirection: Int,
+    onClick: () -> Unit,
+    onBookmark: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    val density = LocalDensity.current
+    val thresholdPx = with(density) { 100.dp.toPx() }
+    val swipeEnabled = swipeDirection >= 0 && !isBookmarked
+
+    Box(
+        modifier = Modifier
+            .clipToBounds()
+            .then(
+                if (swipeEnabled) {
+                    Modifier.pointerInput(swipeDirection) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    if (abs(offsetX.value) >= thresholdPx) {
+                                        onBookmark()
+                                    }
+                                    offsetX.animateTo(0f, tween(250))
+                                }
+                            },
+                            onDragCancel = {
+                                scope.launch { offsetX.animateTo(0f, tween(250)) }
+                            }
+                        ) { _, dragAmount ->
+                            scope.launch {
+                                val next = offsetX.value + dragAmount
+                                val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx, 0f)
+                                else next.coerceIn(0f, thresholdPx)
+                                offsetX.snapTo(clamped)
+                            }
+                        }
+                    }
+                } else Modifier
+            )
+    ) {
+        val progress = if (swipeEnabled) (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1f) else 0f
+        if (progress > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (isBookmarked) MaterialTheme.colorScheme.error.copy(alpha = progress * 0.8f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = progress * 0.8f)
+                    ),
+                contentAlignment = if (swipeDirection == 0) Alignment.CenterEnd else Alignment.CenterStart
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Bookmark",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick
+                )
+        ) {
+            content()
+        }
+    }
 }
 
 private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
