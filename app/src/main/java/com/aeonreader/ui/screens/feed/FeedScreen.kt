@@ -246,7 +246,7 @@ private fun ArticleRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -254,30 +254,29 @@ private fun ArticleRow(
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
         if (summary.heroImageUrl != null) {
             AsyncImage(
                 model = summary.heroImageUrl,
                 contentDescription = summary.title,
                 modifier = Modifier
-                    .width(80.dp)
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(6.dp)),
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(12.dp))
         }
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = summary.title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+
             Spacer(modifier = Modifier.height(4.dp))
+
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (summary.category != null) {
                     Text(
