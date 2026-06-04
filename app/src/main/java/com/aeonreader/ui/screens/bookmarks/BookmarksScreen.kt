@@ -117,8 +117,9 @@ fun BookmarksScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = bookmark.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
