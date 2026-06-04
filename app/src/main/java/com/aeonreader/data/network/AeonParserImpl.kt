@@ -93,7 +93,10 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             pubDateEl?.let { parseRssDate(it.text()) }
 
             val descEl = item.selectFirst("description")
-            val descriptionHtml = descEl?.html() ?: ""
+            val rawHtml = descEl?.html() ?: ""
+            val descriptionHtml = rawHtml
+                .replace("<![CDATA[", "")
+                .replace("]]>", "")
             val descDoc = Jsoup.parse(descriptionHtml)
             val imgEl = descDoc.selectFirst("img[src]")
             val heroImage = imgEl?.let { extractSrc(it) }
