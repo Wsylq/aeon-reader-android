@@ -43,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -55,6 +56,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -63,7 +66,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
-import com.aeonreader.data.local.ArticleSummaryEntity
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
 import kotlinx.coroutines.launch
@@ -132,35 +136,6 @@ private fun FeedContent(
 ) {
     val pagingItems = state.articles.collectAsLazyPagingItems()
 
-    val itemKey = remember { { index: Int -> pagingItems[index]?.url ?: index } }
-
-    val header: @Composable () -> Unit = {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CategoryChipRow(
-                categories = state.categories,
-                selectedCategory = state.selectedCategory,
-                onCategorySelect = onCategorySelect,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-            TextButton(onClick = onToggleLayout) {
-                Text(
-                    text = if (feedLayout == FeedLayout.LIST) "Grid" else "List",
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
-            }
-        }
-    }
-
     val footer: @Composable () -> Unit = {
         pagingItems.loadState.append.let { loadState ->
             when (loadState) {
@@ -194,53 +169,74 @@ private fun FeedContent(
         }
     }
 
-    if (feedLayout == FeedLayout.GRID) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = modifier.fillMaxSize()
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            item(span = { GridItemSpan(2) }) { header() }
-
-            items(pagingItems.itemCount, key = itemKey, contentType = { _ -> "article" }) { index ->
-                pagingItems[index]?.let { entity ->
-                    val summary = remember(entity) { entity.toArticleSummary() }
-                    val swipeLeft = index % 2 == 0
-                    SwipeableFeedItem(
-                        summary = summary,
-                        isBookmarked = bookmarkedUrls.contains(summary.url),
-                        swipeDirection = if (swipeLeft) 0 else 1,
-                        onClick = { onArticleClick(summary.url) },
-                        onBookmark = { onToggleBookmark(summary) }
-                    ) {
-                        ArticleGridCard(summary = summary)
-                    }
-                }
+            CategoryChipRow(
+                categories = state.categories,
+                selectedCategory = state.selectedCategory,
+                onCategorySelect = onCategorySelect,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+            TextButton(onClick = onToggleLayout) {
+                Text(
+                    text = if (feedLayout == FeedLayout.LIST) "Grid" else "List",
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
-
-            item(span = { GridItemSpan(2) }) { footer() }
+            IconButton(onClick = onSettingsClick) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings")
+            }
         }
-    } else {
-        LazyColumn(
-            modifier = modifier.fillMaxSize()
-        ) {
-            item { header() }
 
-            items(pagingItems.itemCount, key = itemKey, contentType = { _ -> "article" }) { index ->
-                pagingItems[index]?.let { entity ->
-                    val summary = remember(entity) { entity.toArticleSummary() }
-                    SwipeableFeedItem(
-                        summary = summary,
-                        isBookmarked = bookmarkedUrls.contains(summary.url),
-                        swipeDirection = 1,
-                        onClick = { onArticleClick(summary.url) },
-                        onBookmark = { onToggleBookmark(summary) }
-                    ) {
-                        ArticleRow(summary = summary)
+        if (feedLayout == FeedLayout.GRID) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(pagingItems.itemCount, key = { index -> pagingItems[index]?.url ?: index }, contentType = { _ -> "article" }) { index ->
+                    pagingItems[index]?.let { summary ->
+                        val swipeLeft = index % 2 == 0
+                        SwipeableFeedItem(
+                            summary = summary,
+                            isBookmarked = bookmarkedUrls.contains(summary.url),
+                            swipeDirection = if (swipeLeft) 0 else 1,
+                            onClick = { onArticleClick(summary.url) },
+                            onBookmark = { onToggleBookmark(summary) }
+                        ) {
+                            ArticleGridCard(summary = summary)
+                        }
                     }
                 }
-            }
 
-            item { footer() }
+                item(span = { GridItemSpan(2) }) { footer() }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(pagingItems.itemCount, key = { index -> pagingItems[index]?.url ?: index }, contentType = { _ -> "article" }) { index ->
+                    pagingItems[index]?.let { summary ->
+                        SwipeableFeedItem(
+                            summary = summary,
+                            isBookmarked = bookmarkedUrls.contains(summary.url),
+                            swipeDirection = 1,
+                            onClick = { onArticleClick(summary.url) },
+                            onBookmark = { onToggleBookmark(summary) }
+                        ) {
+                            ArticleRow(summary = summary)
+                        }
+                    }
+                }
+
+                item { footer() }
+            }
         }
     }
 }
@@ -321,6 +317,12 @@ private fun ArticleGridCard(
     summary: ArticleSummary,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val imageWidthPx = with(LocalDensity.current) {
+        ((configuration.screenWidthDp.dp / 2).toPx()).toInt()
+    }
+
     Column(
         modifier = modifier
             .padding(4.dp)
@@ -329,8 +331,15 @@ private fun ArticleGridCard(
             .clip(RoundedCornerShape(12.dp))
     ) {
         if (summary.heroImageUrl != null) {
+            val imageRequest = remember(summary.heroImageUrl, imageWidthPx) {
+                ImageRequest.Builder(context)
+                    .data(summary.heroImageUrl)
+                    .size(imageWidthPx)
+                    .memoryCachePolicy(CachePolicy.DISABLED)
+                    .build()
+            }
             AsyncImage(
-                model = summary.heroImageUrl,
+                model = imageRequest,
                 contentDescription = summary.title,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -386,7 +395,9 @@ private fun SwipeableFeedItem(
     val haptic = LocalHapticFeedback.current
     val bookmarkColor = MaterialTheme.colorScheme.primary
     val errorColor = MaterialTheme.colorScheme.error
-    val progress = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
+    val showStar by remember {
+        derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f }
+    }
 
     val dragState = rememberDraggableState { delta ->
         scope.launch {
@@ -401,11 +412,12 @@ private fun SwipeableFeedItem(
         modifier = Modifier
             .clipToBounds()
             .drawBehind {
-                if (progress > 0.01f) {
+                val p = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
+                if (p > 0.01f) {
                     val color = if (isBookmarked) {
-                        errorColor.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
+                        errorColor.copy(alpha = (p * 0.9f).coerceAtMost(1f))
                     } else {
-                        bookmarkColor.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
+                        bookmarkColor.copy(alpha = (p * 0.9f).coerceAtMost(1f))
                     }
                     drawRect(color = color, size = size)
                 }
@@ -438,7 +450,7 @@ private fun SwipeableFeedItem(
                 )
         ) {
             content()
-            if (progress > 0.3f) {
+            if (showStar) {
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = "Bookmark",
@@ -453,15 +465,4 @@ private fun SwipeableFeedItem(
     }
 }
 
-private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
-    return ArticleSummary(
-        url = url,
-        title = title,
-        description = description,
-        author = author,
-        category = category,
-        heroImageUrl = heroImageUrl,
-        estimatedReadingTimeMinutes = estimatedReadingTimeMinutes,
-        cachedAt = cachedAt
-    )
-}
+

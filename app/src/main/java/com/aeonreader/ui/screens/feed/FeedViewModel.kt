@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.map
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
@@ -26,7 +27,7 @@ import javax.inject.Inject
 sealed interface FeedUiState {
     data object Loading : FeedUiState
     data class Success(
-        val articles: Flow<PagingData<ArticleSummaryEntity>>,
+        val articles: Flow<PagingData<ArticleSummary>>,
         val categories: List<String>,
         val selectedCategory: String
     ) : FeedUiState
@@ -58,7 +59,7 @@ class FeedViewModel @Inject constructor(
 
     private var categories: List<String> = emptyList()
     private var selectedCategory: String = "all"
-    private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
+    private var pagingFlow: Flow<PagingData<ArticleSummary>>? = null
     private var combineJob: Job? = null
 
     init {
@@ -115,7 +116,9 @@ class FeedViewModel @Inject constructor(
     private fun loadFeed(category: String) {
         pagingFlow = articleRepository.getFeedPager(
             if (category == "all") null else category
-        ).cachedIn(viewModelScope)
+        ).map { pagingData ->
+            pagingData.map { it.toArticleSummary() }
+        }.cachedIn(viewModelScope)
 
         combineJob?.cancel()
         combineJob = viewModelScope.launch {
@@ -172,8 +175,19 @@ class FeedViewModel @Inject constructor(
             userPreferencesRepository.setSelectedCategory(category)
         }
         loadFeed(category)
-        // Emit the updated state immediately so the new articles flow reference is
-        // reflected in uiState right away (without waiting for a network/cache tick).
         emitCurrentState()
     }
+}
+
+private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
+    return ArticleSummary(
+        url = url,
+        title = title,
+        description = description,
+        author = author,
+        category = category,
+        heroImageUrl = heroImageUrl,
+        estimatedReadingTimeMinutes = estimatedReadingTimeMinutes,
+        cachedAt = cachedAt
+    )
 }
