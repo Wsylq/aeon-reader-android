@@ -1,15 +1,14 @@
 package com.aeonreader.ui.screens.feed
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,17 +43,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -382,63 +377,57 @@ private fun SwipeableFeedItem(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     val density = LocalDensity.current
-    val thresholdPx = with(density) { 100.dp.toPx() }
-    val swipeEnabled = swipeDirection >= 0 && !isBookmarked
+    val thresholdPx = with(density) { 150.dp.toPx() }
 
-    Box(
-        modifier = Modifier
-            .clipToBounds()
-            .then(
-                if (swipeEnabled) {
-                    Modifier.pointerInput(swipeDirection) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                scope.launch {
-                                    if (abs(offsetX.value) >= thresholdPx) {
-                                        onBookmark()
-                                    }
-                                    offsetX.animateTo(0f, tween(250))
-                                }
-                            },
-                            onDragCancel = {
-                                scope.launch { offsetX.animateTo(0f, tween(250)) }
-                            }
-                        ) { _, dragAmount ->
-                            scope.launch {
-                                val next = offsetX.value + dragAmount
-                                val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx, 0f)
-                                else next.coerceIn(0f, thresholdPx)
-                                offsetX.snapTo(clamped)
-                            }
-                        }
-                    }
-                } else Modifier
-            )
-    ) {
-        val progress = if (swipeEnabled) (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1f) else 0f
-        if (progress > 0f) {
+    Box(modifier = Modifier.clipToBounds()) {
+        val progress = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
+        if (progress > 0.01f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        if (isBookmarked) MaterialTheme.colorScheme.error.copy(alpha = progress * 0.8f)
-                        else MaterialTheme.colorScheme.primary.copy(alpha = progress * 0.8f)
+                        if (isBookmarked) MaterialTheme.colorScheme.error.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
+                        else MaterialTheme.colorScheme.primary.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
                     ),
                 contentAlignment = if (swipeDirection == 0) Alignment.CenterEnd else Alignment.CenterStart
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Bookmark",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
+                if (progress > 0.3f) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = "Bookmark",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 24.dp).size(32.dp)
+                    )
+                }
             }
         }
+
+        val dragState = rememberDraggableState { delta ->
+            scope.launch {
+                val next = offsetX.value + delta
+                val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
+                else next.coerceIn(0f, thresholdPx * 1.3f)
+                offsetX.snapTo(clamped)
+            }
+        }
+
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = dragState,
+                    onDragStopped = {
+                        scope.launch {
+                            if (abs(offsetX.value) >= thresholdPx && !isBookmarked) {
+                                onBookmark()
+                            }
+                            offsetX.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
+                        }
+                    }
+                )
                 .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onClick
                 )
