@@ -1,5 +1,6 @@
 package com.aeonreader.ui.screens.feed
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -29,8 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -135,14 +134,14 @@ private fun FeedContent(
             }
         }
 
-        items(pagingItems.itemCount, key = itemKey) { index ->
-            pagingItems[index]?.let { entity ->
-                val currentOnClick = rememberUpdatedState(onArticleClick)
-                val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
-                val isOfflineAvailable by remember(entity.url, cachedUrls, isOffline) {
-                    derivedStateOf { isOffline && cachedUrls.contains(entity.url) }
-                }
-                val summary = remember(entity.url, entity) { entity.toArticleSummary() }
+            items(pagingItems.itemCount, key = itemKey, contentType = { _ -> "article" }) { index ->
+                pagingItems[index]?.let { entity ->
+                    val currentOnClick = rememberUpdatedState(onArticleClick)
+                    val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
+                    val isOfflineAvailable by remember(cachedUrls, isOffline) {
+                        derivedStateOf { isOffline && cachedUrls.contains(entity.url) }
+                    }
+                    val summary = remember(entity) { entity.toArticleSummary() }
                 ArticleCard(
                     summary = summary,
                     onClick = onClick,
@@ -225,14 +224,15 @@ fun ArticleCard(
     isOfflineAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
             if (summary.heroImageUrl != null) {
                 val context = LocalContext.current
                 val imageRequest = remember(summary.heroImageUrl) {
@@ -301,7 +301,6 @@ fun ArticleCard(
                     )
                 }
             }
-        }
     }
 }
 
