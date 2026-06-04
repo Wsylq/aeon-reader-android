@@ -44,13 +44,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -170,6 +170,7 @@ private fun FeedContent(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
+        key("header") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -194,13 +195,14 @@ private fun FeedContent(
                 Icon(Icons.Default.Settings, contentDescription = "Settings")
             }
         }
+        }
 
         if (feedLayout == FeedLayout.GRID) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.weight(1f)
             ) {
-                items(pagingItems.itemCount, key = { index -> pagingItems[index]?.url ?: index }, contentType = { _ -> "article" }) { index ->
+                items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                     pagingItems[index]?.let { summary ->
                         val swipeLeft = index % 2 == 0
                         SwipeableFeedItem(
@@ -221,7 +223,7 @@ private fun FeedContent(
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {
-                items(pagingItems.itemCount, key = { index -> pagingItems[index]?.url ?: index }, contentType = { _ -> "article" }) { index ->
+                items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                     pagingItems[index]?.let { summary ->
                         SwipeableFeedItem(
                             summary = summary,
@@ -318,9 +320,10 @@ private fun ArticleGridCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val configuration = LocalConfiguration.current
-    val imageWidthPx = with(LocalDensity.current) {
-        ((configuration.screenWidthDp.dp / 2).toPx()).toInt()
+    val imageWidthPx = remember(density, configuration) {
+        with(density) { ((configuration.screenWidthDp.dp / 2).toPx()).toInt() }
     }
 
     Column(
@@ -393,8 +396,6 @@ private fun SwipeableFeedItem(
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
-    val bookmarkColor = MaterialTheme.colorScheme.primary
-    val errorColor = MaterialTheme.colorScheme.error
     val showStar by remember {
         derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f }
     }
@@ -408,21 +409,7 @@ private fun SwipeableFeedItem(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .clipToBounds()
-            .drawBehind {
-                val p = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
-                if (p > 0.01f) {
-                    val color = if (isBookmarked) {
-                        errorColor.copy(alpha = (p * 0.9f).coerceAtMost(1f))
-                    } else {
-                        bookmarkColor.copy(alpha = (p * 0.9f).coerceAtMost(1f))
-                    }
-                    drawRect(color = color, size = size)
-                }
-            }
-    ) {
+    Box(modifier = Modifier.clipToBounds()) {
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
