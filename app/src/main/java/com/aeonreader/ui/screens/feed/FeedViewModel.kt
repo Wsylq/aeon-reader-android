@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
+import com.aeonreader.domain.FeedLayout
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -44,6 +45,9 @@ class FeedViewModel @Inject constructor(
     private val _isOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
 
+    private val _feedLayout = MutableStateFlow(FeedLayout.LIST)
+    val feedLayout: StateFlow<FeedLayout> = _feedLayout.asStateFlow()
+
     private var categories: List<String> = emptyList()
     private var selectedCategory: String = "all"
     private var pagingFlow: Flow<PagingData<ArticleSummaryEntity>>? = null
@@ -62,6 +66,10 @@ class FeedViewModel @Inject constructor(
                 "all"
             }
 
+            _feedLayout.value = try {
+                userPreferencesRepository.feedLayout.first()
+            } catch (_: Exception) { FeedLayout.LIST }
+
             loadCategories()
             loadFeed(selectedCategory)
         }
@@ -77,12 +85,6 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Rebuilds the paging flow for [category] and restarts the network/cache
-     * status observer. Does NOT touch [_uiState] — callers are responsible for
-     * updating state before/after this call so that Loading / Success sequencing
-     * is controlled at the call site.
-     */
     private fun loadFeed(category: String) {
         pagingFlow = articleRepository.getFeedPager(
             if (category == "all") null else category
@@ -108,9 +110,6 @@ class FeedViewModel @Inject constructor(
         val flow = pagingFlow
         if (flow != null) {
             val current = _uiState.value
-            // Guard against redundant emissions: only update state if articles, categories,
-            // or selectedCategory has actually changed. Flow references are compared with
-            // referential equality (===) because Flow does not implement structural equality.
             if (current is FeedUiState.Success &&
                 current.articles === flow &&
                 current.categories == categories &&
@@ -126,6 +125,12 @@ class FeedViewModel @Inject constructor(
         } else {
             _uiState.value = FeedUiState.Loading
         }
+    }
+
+    fun toggleLayout() {
+        val next = if (_feedLayout.value == FeedLayout.LIST) FeedLayout.GRID else FeedLayout.LIST
+        _feedLayout.value = next
+        viewModelScope.launch { userPreferencesRepository.setFeedLayout(next) }
     }
 
     fun refresh() {

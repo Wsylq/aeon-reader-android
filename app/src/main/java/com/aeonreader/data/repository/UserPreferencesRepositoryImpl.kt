@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.aeonreader.domain.FeedLayout
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ReadingTheme
@@ -32,6 +33,7 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private val READING_THEME = stringPreferencesKey("reading_theme")
         private val READING_MOTION_BLUR = booleanPreferencesKey("reading_motion_blur")
         private val READING_SHOW_RELATED = booleanPreferencesKey("reading_show_related")
+        private val FEED_LAYOUT = stringPreferencesKey("feed_layout")
     }
 
     override val selectedCategory: Flow<String> = context.dataStore.data.map { prefs ->
@@ -43,6 +45,19 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             "LIGHT" -> ThemeOverride.LIGHT
             "DARK" -> ThemeOverride.DARK
             else -> ThemeOverride.NONE
+        }
+    }
+
+    override val feedLayout: Flow<FeedLayout> = context.dataStore.data.map { prefs ->
+        when (prefs[FEED_LAYOUT]) {
+            "GRID" -> FeedLayout.GRID
+            else -> FeedLayout.LIST
+        }
+    }
+
+    override suspend fun setFeedLayout(layout: FeedLayout) {
+        context.dataStore.edit { prefs ->
+            prefs[FEED_LAYOUT] = layout.name
         }
     }
 

@@ -61,6 +61,8 @@ enum class ReadingFont(val displayName: String) {
     MONO("Monospace")
 }
 
+enum class FeedLayout { LIST, GRID }
+
 enum class ReadingTheme(val displayName: String) {
     DEFAULT("Default"),
     SEPIA("Sepia"),
