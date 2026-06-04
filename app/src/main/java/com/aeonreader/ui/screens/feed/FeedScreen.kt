@@ -113,7 +113,7 @@ fun FeedScreen(
                 onCategorySelect = { viewModel.selectCategory(it) },
                 onToggleLayout = { viewModel.toggleLayout() },
                 onToggleBookmark = { viewModel.toggleBookmark(it) },
-                viewModel = viewModel,
+                bookmarkedUrls = viewModel.bookmarkedUrls,
                 modifier = modifier
             )
         }
@@ -129,11 +129,12 @@ private fun FeedContent(
     onCategorySelect: (String) -> Unit,
     onToggleLayout: () -> Unit,
     onToggleBookmark: (ArticleSummary) -> Unit,
-    viewModel: FeedViewModel,
+    bookmarkedUrls: kotlinx.coroutines.flow.StateFlow<Set<String>>,
     modifier: Modifier = Modifier
 ) {
     val articlesFlow = remember(state.articles) { state.articles }
     val pagingItems = articlesFlow.collectAsLazyPagingItems()
+    val bookmarksSet by bookmarkedUrls.collectAsState()
 
     val footer: @Composable () -> Unit = remember(pagingItems) { {
         pagingItems.loadState.append.let { loadState ->
@@ -204,15 +205,16 @@ private fun FeedContent(
                 items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                     pagingItems[index]?.let { summary ->
                         val swipeLeft = index % 2 == 0
+                        val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
+                        val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            viewModel = viewModel,
+                            isBookmarked = bookmarksSet.contains(summary.url),
                             swipeDirection = if (swipeLeft) 0 else 1,
-                            onClick = { onArticleClick(summary.url) },
-                            onBookmark = { onToggleBookmark(summary) }
-                        ) {
-                            ArticleGridCard(summary = summary)
-                        }
+                            onClick = onClick,
+                            onBookmark = onBookmark,
+                            content = { ArticleGridCard(summary = summary) }
+                        )
                     }
                 }
 
@@ -224,15 +226,16 @@ private fun FeedContent(
             ) {
                 items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                     pagingItems[index]?.let { summary ->
+                        val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
+                        val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            viewModel = viewModel,
+                            isBookmarked = bookmarksSet.contains(summary.url),
                             swipeDirection = 1,
-                            onClick = { onArticleClick(summary.url) },
-                            onBookmark = { onToggleBookmark(summary) }
-                        ) {
-                            ArticleRow(summary = summary)
-                        }
+                            onClick = onClick,
+                            onBookmark = onBookmark,
+                            content = { ArticleRow(summary = summary) }
+                        )
                     }
                 }
 
@@ -383,7 +386,7 @@ fun ArticleCard(
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    viewModel: FeedViewModel,
+    isBookmarked: Boolean,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
@@ -395,10 +398,6 @@ private fun SwipeableFeedItem(
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
-    val bookmarks by viewModel.bookmarkedUrls.collectAsState()
-    val isBookmarked by remember(summary.url) {
-        derivedStateOf { bookmarks.contains(summary.url) }
-    }
     val showStar by remember {
         derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f }
     }
