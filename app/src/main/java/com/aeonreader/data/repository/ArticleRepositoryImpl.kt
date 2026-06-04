@@ -39,7 +39,7 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> {
         return Pager(
-            config = PagingConfig(pageSize = 20, prefetchDistance = 2, enablePlaceholders = false),
+            config = PagingConfig(pageSize = 20, prefetchDistance = 8, enablePlaceholders = false),
             remoteMediator = ArticleRemoteMediator(
                 category = category,
                 scraper = scraper,
@@ -120,7 +120,7 @@ class ArticleRepositoryImpl @Inject constructor(
     override fun observeCachedArticleUrls(): Flow<Set<String>> =
         articleDao.getCachedArticleUrls().map { it.toSet() }.distinctUntilChanged()
 
-    private fun cacheArticleImages(article: Article) {
+    private suspend fun cacheArticleImages(article: Article) {
         val urls = mutableListOf<String>()
         article.heroImageUrl?.let { urls.add(it) }
         for (block in article.bodyBlocks) {

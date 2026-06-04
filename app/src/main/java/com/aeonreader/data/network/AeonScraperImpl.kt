@@ -93,12 +93,15 @@ class AeonScraperImpl @Inject constructor(
 
     override suspend fun fetchCategories(): Result<List<String>> {
         val url = "https://aeon.co/essays"
-        val result = executeRequest(httpClient, url).map { html ->
-            parser.parseCategories(html).getOrThrow()
-        }
-        return if (result.isSuccess && result.getOrThrow().isNotEmpty()) {
-            result
-        } else {
+        return try {
+            val html = executeRequest(httpClient, url).getOrThrow()
+            val categories = parser.parseCategories(html)
+            if (categories.isSuccess && categories.getOrThrow().isNotEmpty()) {
+                categories
+            } else {
+                Result.success(listOf("Philosophy", "Science", "Psychology", "Society", "Culture"))
+            }
+        } catch (_: Exception) {
             Result.success(listOf("Philosophy", "Science", "Psychology", "Society", "Culture"))
         }
     }

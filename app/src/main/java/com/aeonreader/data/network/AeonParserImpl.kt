@@ -3,6 +3,8 @@ package com.aeonreader.data.network
 import com.aeonreader.domain.Article
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.ContentBlock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
@@ -453,15 +455,15 @@ class AeonParserImpl @Inject constructor() : AeonParser {
         return ceil(estimatedArticleWords / 200.0).toInt().coerceAtLeast(5)
     }
 
-    override fun parseCategories(html: String): Result<List<String>> {
-        return try {
+    override suspend fun parseCategories(html: String): Result<List<String>> = withContext(Dispatchers.Default) {
+        try {
             val doc = Jsoup.parse(html)
             val categories = doc.select("a[href^=\"/philosophy\"], a[href^=\"/science\"], a[href^=\"/psychology\"], a[href^=\"/society\"], a[href^=\"/culture\"]")
                 .mapNotNull { it.text().ifBlank { null } }
                 .distinct()
                 .filter { it.isNotBlank() && it.length < 30 }
 
-            return if (categories.isEmpty()) {
+            if (categories.isEmpty()) {
                 Result.success(listOf("Philosophy", "Science", "Psychology", "Society", "Culture"))
             } else {
                 Result.success(categories)

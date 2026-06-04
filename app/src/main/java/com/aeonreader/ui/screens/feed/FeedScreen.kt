@@ -32,6 +32,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -106,15 +108,16 @@ fun FeedScreen(
             }
         }
         is FeedUiState.Success -> {
+            val bookmarksSet by viewModel.bookmarkedUrls.collectAsState()
             FeedContent(
                 state = state,
                 feedLayout = feedLayout,
+                bookmarksSet = bookmarksSet,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
                 onToggleLayout = { viewModel.toggleLayout() },
                 onToggleBookmark = { viewModel.toggleBookmark(it) },
-                bookmarkedUrls = viewModel.bookmarkedUrls,
                 modifier = modifier
             )
         }
@@ -125,50 +128,16 @@ fun FeedScreen(
 private fun FeedContent(
     state: FeedUiState.Success,
     feedLayout: FeedLayout,
+    bookmarksSet: Set<String>,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onToggleLayout: () -> Unit,
     onToggleBookmark: (ArticleSummary) -> Unit,
-    bookmarkedUrls: kotlinx.coroutines.flow.StateFlow<Set<String>>,
     modifier: Modifier = Modifier
 ) {
-    val articlesFlow = remember(state.articles) { state.articles }
+    val articlesFlow = state.articles
     val pagingItems = articlesFlow.collectAsLazyPagingItems()
-    val bookmarksSet by bookmarkedUrls.collectAsState()
-
-    val footer: @Composable () -> Unit = remember(pagingItems) { {
-        pagingItems.loadState.append.let { loadState ->
-            when (loadState) {
-                is LoadState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                }
-                is LoadState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Failed to load more articles",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Button(onClick = { pagingItems.retry() }) {
-                                Text("Retry")
-                            }
-                        }
-                    }
-                }
-                else -> {}
-            }
-        }
-    } }
 
     Column(modifier = modifier.fillMaxSize()) {
         key("header") {
@@ -203,7 +172,7 @@ private fun FeedContent(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.weight(1f)
             ) {
-                items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
+                items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
                     pagingItems[index]?.let { summary ->
                         val swipeLeft = index % 2 == 0
                         val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
@@ -219,13 +188,15 @@ private fun FeedContent(
                     }
                 }
 
-                item(span = { GridItemSpan(2) }) { footer() }
+                item(span = { GridItemSpan(2) }) {
+                    FeedFooter(loadState = pagingItems.loadState.append, onRetry = { pagingItems.retry() })
+                }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {
-                items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
+                items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
                     pagingItems[index]?.let { summary ->
                         val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
@@ -240,7 +211,9 @@ private fun FeedContent(
                     }
                 }
 
-                item { footer() }
+                item {
+                    FeedFooter(loadState = pagingItems.loadState.append, onRetry = { pagingItems.retry() })
+                }
             }
         }
     }
@@ -281,13 +254,13 @@ private fun ArticleRow(
     summary: ArticleSummary,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .shadow(2.dp, RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -331,12 +304,11 @@ private fun ArticleGridCard(
         }
     }
 
-    Column(
-        modifier = modifier
-            .padding(4.dp)
-            .shadow(2.dp, RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
+    Card(
+        modifier = modifier.padding(4.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         if (summary.heroImageUrl != null) {
             val imageRequest = remember(summary.heroImageUrl, imageWidthPx) {
@@ -369,7 +341,7 @@ private fun ArticleGridCard(
             )
             Text(
                 text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -390,6 +362,38 @@ fun ArticleCard(
 }
 
 @Composable
+private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
+    when (loadState) {
+        is LoadState.Loading -> {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            }
+        }
+        is LoadState.Error -> {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Failed to load more articles",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Button(onClick = onRetry) {
+                        Text("Retry")
+                    }
+                }
+            }
+        }
+        else -> {}
+    }
+}
+
+@Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
     isBookmarked: Boolean,
@@ -405,35 +409,36 @@ private fun SwipeableFeedItem(
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
     val isDragging = remember { mutableStateOf(false) }
+    val dragOffset = remember { mutableStateOf(0f) }
 
     val dragState = rememberDraggableState { delta ->
-        scope.launch {
-            if (!isDragging.value) isDragging.value = true
-            val next = offsetX.value + delta
-            val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
-            else next.coerceIn(0f, thresholdPx * 1.3f)
-            offsetX.snapTo(clamped)
-        }
+        isDragging.value = true
+        val next = dragOffset.value + delta
+        val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
+        else next.coerceIn(0f, thresholdPx * 1.3f)
+        dragOffset.value = clamped
     }
 
     Box(modifier = Modifier.clipToBounds()) {
         Box(
             modifier = Modifier
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
                             isDragging.value = false
-                            if (abs(offsetX.value) >= thresholdPx && !isBookmarked) {
+                            if (abs(dragOffset.value) >= thresholdPx && !isBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
                                 pulseScale.snapTo(0.95f)
                                 pulseScale.animateTo(1.05f, spring(dampingRatio = 0.3f, stiffness = 900f))
                                 pulseScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f))
                             }
+                            offsetX.snapTo(dragOffset.value)
                             offsetX.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
+                            dragOffset.value = 0f
                         }
                     }
                 )
@@ -444,7 +449,7 @@ private fun SwipeableFeedItem(
                 )
         ) {
             content()
-            if (isDragging.value && abs(offsetX.value) > thresholdPx * 0.3f) {
+            if (isDragging.value && abs(dragOffset.value) > thresholdPx * 0.3f) {
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = "Bookmark",
