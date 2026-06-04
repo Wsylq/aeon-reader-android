@@ -674,45 +674,47 @@ private fun ReaderParagraph(
         letterSpacing = 0.15.sp
     )
 
-    val annotatedText = if (isFirstParagraph && text.isNotEmpty() && theme == ReadingTheme.AEON) {
-        buildAnnotatedString {
-            withStyle(
-                SpanStyle(
-                    fontSize = (prefs.fontSize * 2.4).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.text
-                )
-            ) {
-                append(text.first().toString())
-            }
-            val rest = text.drop(1)
-            val words = rest.split(Regex("(?<=\\s)|(?=\\s)"))
-            for (word in words) {
-                val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
-                val isHighlighted = clean.isNotEmpty() && clean in highlightedWords
+    val annotatedText = remember(text, prefs.fontSize, theme, colors, highlightedWords) {
+        if (isFirstParagraph && text.isNotEmpty() && theme == ReadingTheme.AEON) {
+            buildAnnotatedString {
                 withStyle(
                     SpanStyle(
-                        color = colors.text,
-                        background = if (isHighlighted) Color(0xCCFFEB3B) else Color.Transparent
+                        fontSize = (prefs.fontSize * 2.4).sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.text
                     )
                 ) {
-                    append(word)
+                    append(text.first().toString())
+                }
+                val rest = text.drop(1)
+                val words = rest.split(Regex("(?<=\\s)|(?=\\s)"))
+                for (word in words) {
+                    val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
+                    val isHighlighted = clean.isNotEmpty() && clean in highlightedWords
+                    withStyle(
+                        SpanStyle(
+                            color = colors.text,
+                            background = if (isHighlighted) Color(0xCCFFEB3B) else Color.Transparent
+                        )
+                    ) {
+                        append(word)
+                    }
                 }
             }
-        }
-    } else {
-        buildAnnotatedString {
-            val words = text.split(Regex("(?<=\\s)|(?=\\s)"))
-            for (word in words) {
-                val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
-                val isHighlighted = clean.isNotEmpty() && clean in highlightedWords
-                withStyle(
-                    SpanStyle(
-                        color = colors.text,
-                        background = if (isHighlighted) Color(0xCCFFEB3B) else Color.Transparent
-                    )
-                ) {
-                    append(word)
+        } else {
+            buildAnnotatedString {
+                val words = text.split(Regex("(?<=\\s)|(?=\\s)"))
+                for (word in words) {
+                    val clean = word.trim().lowercase().trimEnd('.', ',', '!', '?', ';', ':')
+                    val isHighlighted = clean.isNotEmpty() && clean in highlightedWords
+                    withStyle(
+                        SpanStyle(
+                            color = colors.text,
+                            background = if (isHighlighted) Color(0xCCFFEB3B) else Color.Transparent
+                        )
+                    ) {
+                        append(word)
+                    }
                 }
             }
         }

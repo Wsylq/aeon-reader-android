@@ -8,13 +8,13 @@ import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -90,14 +90,16 @@ class FeedViewModel @Inject constructor(
 
         combineJob?.cancel()
         combineJob = viewModelScope.launch {
-            combine(
-                articleRepository.observeNetworkStatus(),
+            launch {
+                articleRepository.observeNetworkStatus()
+                    .debounce(300)
+                    .distinctUntilChanged()
+                    .collect { isOnline -> _isOffline.value = !isOnline }
+            }
+            launch {
                 articleRepository.observeCachedArticleUrls()
-            ) { isOnline, urls ->
-                Pair(!isOnline, urls)
-            }.distinctUntilChanged().collect { (offline, urls) ->
-                _isOffline.value = offline
-                _cachedUrls.value = urls
+                    .distinctUntilChanged()
+                    .collect { urls -> _cachedUrls.value = urls }
             }
         }
     }
