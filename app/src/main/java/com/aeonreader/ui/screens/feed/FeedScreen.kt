@@ -1,6 +1,5 @@
 package com.aeonreader.ui.screens.feed
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -34,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -42,14 +41,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
@@ -62,8 +59,6 @@ fun FeedScreen(
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val cachedUrls by viewModel.cachedUrls.collectAsState()
-    val isOffline by viewModel.isOffline.collectAsState()
     val feedLayout by viewModel.feedLayout.collectAsState()
 
     when (val state = uiState) {
@@ -90,14 +85,11 @@ fun FeedScreen(
         is FeedUiState.Success -> {
             FeedContent(
                 state = state,
-                cachedUrls = cachedUrls,
-                isOffline = isOffline,
                 feedLayout = feedLayout,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
                 onToggleLayout = { viewModel.toggleLayout() },
-                onRefresh = { viewModel.refresh() },
                 modifier = modifier
             )
         }
@@ -107,14 +99,11 @@ fun FeedScreen(
 @Composable
 private fun FeedContent(
     state: FeedUiState.Success,
-    cachedUrls: Set<String>,
-    isOffline: Boolean,
     feedLayout: FeedLayout,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onToggleLayout: () -> Unit,
-    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagingItems = state.articles.collectAsLazyPagingItems()
@@ -193,10 +182,7 @@ private fun FeedContent(
                     val currentOnClick = rememberUpdatedState(onArticleClick)
                     val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
                     val summary = remember(entity) { entity.toArticleSummary() }
-                    ArticleGridCard(
-                        summary = summary,
-                        onClick = onClick
-                    )
+                    ArticleGridCard(summary = summary, onClick = onClick)
                 }
             }
 
@@ -212,15 +198,8 @@ private fun FeedContent(
                 pagingItems[index]?.let { entity ->
                     val currentOnClick = rememberUpdatedState(onArticleClick)
                     val onClick = remember(entity.url) { { currentOnClick.value(entity.url) } }
-                    val isOfflineAvailable by remember(cachedUrls, isOffline) {
-                        derivedStateOf { isOffline && cachedUrls.contains(entity.url) }
-                    }
                     val summary = remember(entity) { entity.toArticleSummary() }
-                    ArticleCard(
-                        summary = summary,
-                        onClick = onClick,
-                        isOfflineAvailable = isOfflineAvailable
-                    )
+                    ArticleRow(summary = summary, onClick = onClick)
                 }
             }
 
@@ -260,86 +239,51 @@ fun CategoryChipRow(
 }
 
 @Composable
-fun ArticleCard(
+private fun ArticleRow(
     summary: ArticleSummary,
     onClick: () -> Unit,
-    isOfflineAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(12.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (summary.heroImageUrl != null) {
-            val context = LocalContext.current
-            val imageRequest = remember(summary.heroImageUrl) {
-                ImageRequest.Builder(context)
-                    .data(summary.heroImageUrl)
-                    .crossfade(false)
-                    .size(720)
-                    .build()
-            }
             AsyncImage(
-                model = imageRequest,
+                model = summary.heroImageUrl,
                 contentDescription = summary.title,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .width(80.dp)
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(6.dp)),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
         }
 
-        Text(
-            text = summary.title,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (summary.author != null) {
-                Text(
-                    text = summary.author,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (summary.category != null) {
-                Text(
-                    text = summary.category,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min read",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = summary.title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-            if (summary.cachedAt != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (summary.category != null) {
+                    Text(
+                        text = summary.category,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Text(
-                    text = if (isOfflineAvailable) "Offline" else "Cached",
+                    text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isOfflineAvailable) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -355,40 +299,27 @@ private fun ArticleGridCard(
     Column(
         modifier = modifier
             .padding(4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
         if (summary.heroImageUrl != null) {
-            val context = LocalContext.current
-            val imageRequest = remember(summary.heroImageUrl) {
-                ImageRequest.Builder(context)
-                    .data(summary.heroImageUrl)
-                    .crossfade(false)
-                    .size(360)
-                    .build()
-            }
             AsyncImage(
-                model = imageRequest,
+                model = summary.heroImageUrl,
                 contentDescription = summary.title,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    .aspectRatio(4f / 3f)
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
         }
 
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(top = 4.dp)) {
             Text(
                 text = summary.title,
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
             Text(
                 text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
                 style = MaterialTheme.typography.labelSmall,
@@ -396,6 +327,16 @@ private fun ArticleGridCard(
             )
         }
     }
+}
+
+@Composable
+fun ArticleCard(
+    summary: ArticleSummary,
+    onClick: () -> Unit,
+    isOfflineAvailable: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    ArticleRow(summary = summary, onClick = onClick, modifier = modifier)
 }
 
 private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
