@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -403,12 +404,11 @@ private fun SwipeableFeedItem(
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
-    val showStar by remember {
-        derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f }
-    }
+    val isDragging = remember { mutableStateOf(false) }
 
     val dragState = rememberDraggableState { delta ->
         scope.launch {
+            if (!isDragging.value) isDragging.value = true
             val next = offsetX.value + delta
             val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
             else next.coerceIn(0f, thresholdPx * 1.3f)
@@ -420,12 +420,12 @@ private fun SwipeableFeedItem(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .graphicsLayer { scaleX = pulseScale.value; scaleY = pulseScale.value }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
+                            isDragging.value = false
                             if (abs(offsetX.value) >= thresholdPx && !isBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
@@ -444,7 +444,7 @@ private fun SwipeableFeedItem(
                 )
         ) {
             content()
-            if (showStar) {
+            if (isDragging.value && abs(offsetX.value) > thresholdPx * 0.3f) {
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = "Bookmark",

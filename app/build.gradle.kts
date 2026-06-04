@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.10.49"
+        versionName = "0.10.50"
 
         testInstrumentationRunner = "com.aeonreader.HiltTestRunner"
     }
