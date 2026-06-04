@@ -50,7 +50,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -376,8 +379,10 @@ private fun SwipeableFeedItem(
 ) {
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
+    val pulseScale = remember { Animatable(1f) }
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
+    val haptic = LocalHapticFeedback.current
 
     Box(modifier = Modifier.clipToBounds()) {
         val progress = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
@@ -414,13 +419,18 @@ private fun SwipeableFeedItem(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .graphicsLayer { scaleX = pulseScale.value; scaleY = pulseScale.value }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
                             if (abs(offsetX.value) >= thresholdPx && !isBookmarked) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
+                                pulseScale.snapTo(0.95f)
+                                pulseScale.animateTo(1.05f, spring(dampingRatio = 0.3f, stiffness = 900f))
+                                pulseScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f))
                             }
                             offsetX.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
                         }
