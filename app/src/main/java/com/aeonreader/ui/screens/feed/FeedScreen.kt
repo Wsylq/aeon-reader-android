@@ -340,7 +340,9 @@ private fun ArticleGridCard(
                 ImageRequest.Builder(context)
                     .data(summary.heroImageUrl)
                     .size(imageWidthPx)
-                    .memoryCachePolicy(CachePolicy.DISABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .crossfade(100)
                     .build()
             }
             AsyncImage(
