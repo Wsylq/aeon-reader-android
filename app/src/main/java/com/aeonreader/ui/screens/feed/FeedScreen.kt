@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -200,7 +201,7 @@ private fun FeedContent(
         ) {
             item(span = { GridItemSpan(2) }) { header() }
 
-            items(pagingItems.itemCount, key = itemKey) { index ->
+            items(pagingItems.itemCount, key = itemKey, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { entity ->
                     val summary = remember(entity) { entity.toArticleSummary() }
                     val swipeLeft = index % 2 == 0
@@ -383,39 +384,33 @@ private fun SwipeableFeedItem(
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
+    val bookmarkColor = MaterialTheme.colorScheme.primary
+    val errorColor = MaterialTheme.colorScheme.error
+    val progress = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
 
-    Box(modifier = Modifier.clipToBounds()) {
-        val progress = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1.2f)
-        if (progress > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        if (isBookmarked) MaterialTheme.colorScheme.error.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
-                        else MaterialTheme.colorScheme.primary.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
-                    ),
-                contentAlignment = if (swipeDirection == 0) Alignment.CenterEnd else Alignment.CenterStart
-            ) {
-                if (progress > 0.3f) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = "Bookmark",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 24.dp).size(32.dp)
-                    )
+    val dragState = rememberDraggableState { delta ->
+        scope.launch {
+            val next = offsetX.value + delta
+            val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
+            else next.coerceIn(0f, thresholdPx * 1.3f)
+            offsetX.snapTo(clamped)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .clipToBounds()
+            .drawBehind {
+                if (progress > 0.01f) {
+                    val color = if (isBookmarked) {
+                        errorColor.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
+                    } else {
+                        bookmarkColor.copy(alpha = (progress * 0.9f).coerceAtMost(1f))
+                    }
+                    drawRect(color = color, size = size)
                 }
             }
-        }
-
-        val dragState = rememberDraggableState { delta ->
-            scope.launch {
-                val next = offsetX.value + delta
-                val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
-                else next.coerceIn(0f, thresholdPx * 1.3f)
-                offsetX.snapTo(clamped)
-            }
-        }
-
+    ) {
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
@@ -443,6 +438,17 @@ private fun SwipeableFeedItem(
                 )
         ) {
             content()
+            if (progress > 0.3f) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Bookmark",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .align(if (swipeDirection == 0) Alignment.CenterEnd else Alignment.CenterStart)
+                        .padding(horizontal = 24.dp)
+                        .size(32.dp)
+                )
+            }
         }
     }
 }
