@@ -77,6 +77,5 @@ data class ReadingPreferences(
     val fontSize: Int = 16,
     val isImmersiveMode: Boolean = false,
     val theme: ReadingTheme = ReadingTheme.DEFAULT,
-    val isMotionBlurEnabled: Boolean = true,
     val showRelatedArticles: Boolean = true
 )

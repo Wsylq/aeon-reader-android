@@ -31,7 +31,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private val READING_FONT_SIZE = intPreferencesKey("reading_font_size")
         private val READING_IMMERSIVE_MODE = booleanPreferencesKey("reading_immersive_mode")
         private val READING_THEME = stringPreferencesKey("reading_theme")
-        private val READING_MOTION_BLUR = booleanPreferencesKey("reading_motion_blur")
         private val READING_SHOW_RELATED = booleanPreferencesKey("reading_show_related")
         private val FEED_LAYOUT = stringPreferencesKey("feed_layout")
     }
@@ -66,7 +65,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         val fontSize = prefs[READING_FONT_SIZE] ?: 16
         val immersiveMode = prefs[READING_IMMERSIVE_MODE] ?: false
         val themeName = prefs[READING_THEME] ?: "DEFAULT"
-        val motionBlur = prefs[READING_MOTION_BLUR] ?: false
         val showRelated = prefs[READING_SHOW_RELATED] ?: true
         val font = try { ReadingFont.valueOf(fontName) } catch (_: Exception) { ReadingFont.SANS }
         val theme = try { ReadingTheme.valueOf(themeName) } catch (_: Exception) { ReadingTheme.DEFAULT }
@@ -75,7 +73,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             fontSize = fontSize,
             isImmersiveMode = immersiveMode,
             theme = theme,
-            isMotionBlurEnabled = motionBlur,
             showRelatedArticles = showRelated
         )
     }
@@ -102,7 +99,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             stored[READING_FONT_SIZE] = prefs.fontSize
             stored[READING_IMMERSIVE_MODE] = prefs.isImmersiveMode
             stored[READING_THEME] = prefs.theme.name
-            stored[READING_MOTION_BLUR] = prefs.isMotionBlurEnabled
             stored[READING_SHOW_RELATED] = prefs.showRelatedArticles
         }
     }

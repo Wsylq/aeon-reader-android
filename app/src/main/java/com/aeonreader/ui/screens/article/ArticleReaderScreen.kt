@@ -80,10 +80,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import android.os.Build
-import androidx.compose.ui.graphics.BlurEffect
-import androidx.compose.ui.graphics.RenderEffect
-import androidx.compose.ui.graphics.TileMode
+
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.graphics.graphicsLayer
@@ -349,15 +348,11 @@ private fun ArticleReaderContent(
     }
 
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
-    val blurModifier = if (Build.VERSION.SDK_INT >= 31 && readingPrefs.isMotionBlurEnabled && isScrolling)
-        Modifier.graphicsLayer { renderEffect = BlurEffect(0f, 8f, TileMode.Clamp) }
-    else
-        Modifier
 
     val definition by viewModel.definition.collectAsState()
     val highlightedWords by viewModel.highlightedWords.collectAsState()
 
-    Column(modifier = modifier.fillMaxSize().background(colors.background).then(blurModifier)) {
+    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         if (!readingPrefs.isImmersiveMode) {
             LinearProgressIndicator(
                 progress = {
@@ -373,7 +368,8 @@ private fun ArticleReaderContent(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().weight(1f)
+            modifier = Modifier.fillMaxSize().weight(1f),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             item {
                     if (article.heroImageUrl != null) {
@@ -498,7 +494,7 @@ private fun ArticleReaderContent(
                     }
                 }
 
-                itemsIndexed(bodyBlocks) { index, block ->
+                itemsIndexed(bodyBlocks, key = { index, _ -> index }) { index, block ->
                     ContentBlockItem(
                         block = block,
                         prefs = readingPrefs,
@@ -508,12 +504,9 @@ private fun ArticleReaderContent(
                         theme = readingPrefs.theme,
                         imageCache = viewModel.imageCache,
                         highlightedWords = highlightedWords,
+                        isScrolling = isScrolling,
                         onWordDoubleTap = { word -> viewModel.lookupWord(word) }
                     )
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(48.dp))
                 }
 
                 if (readingPrefs.showRelatedArticles && article.relatedArticles.isNotEmpty()) {
@@ -607,11 +600,12 @@ private fun ContentBlockItem(
     theme: ReadingTheme = ReadingTheme.DEFAULT,
     imageCache: ImageCache? = null,
     highlightedWords: Set<String> = emptySet(),
+    isScrolling: Boolean = false,
     onWordDoubleTap: (String) -> Unit = {}
 ) {
     val highlightAlpha by animateFloatAsState(
         targetValue = if (isHighlighted) 1f else 0f,
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = if (isScrolling) snap() else tween(durationMillis = 300),
         label = "highlight"
     )
 
@@ -674,7 +668,7 @@ private fun ReaderParagraph(
         letterSpacing = 0.15.sp
     )
 
-    val annotatedText = remember(text, prefs.fontSize, theme, colors, highlightedWords) {
+    val annotatedText = remember(text, theme, highlightedWords) {
         if (isFirstParagraph && text.isNotEmpty() && theme == ReadingTheme.AEON) {
             buildAnnotatedString {
                 withStyle(
@@ -1023,51 +1017,6 @@ private fun ReadingSettingsSheet(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            if (Build.VERSION.SDK_INT >= 31) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { viewModel.setReadingPrefs(prefs.copy(isMotionBlurEnabled = !prefs.isMotionBlurEnabled)) }
-                        .padding(vertical = 12.dp, horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Motion Blur",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Smooth vertical blur while scrolling",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (prefs.isMotionBlurEnabled) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (prefs.isMotionBlurEnabled) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
             Text("Theme", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
             Spacer(modifier = Modifier.height(8.dp))
