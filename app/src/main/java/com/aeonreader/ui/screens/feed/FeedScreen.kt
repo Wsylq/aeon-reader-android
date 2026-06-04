@@ -1,5 +1,6 @@
 package com.aeonreader.ui.screens.feed
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -247,8 +249,12 @@ private fun ArticleRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .clickable(onClick = onClick),
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .shadow(2.dp, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (summary.heroImageUrl != null) {
@@ -299,6 +305,9 @@ private fun ArticleGridCard(
     Column(
         modifier = modifier
             .padding(4.dp)
+            .shadow(2.dp, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
         if (summary.heroImageUrl != null) {
@@ -308,12 +317,12 @@ private fun ArticleGridCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
                 contentScale = ContentScale.Crop
             )
         }
 
-        Column(modifier = Modifier.padding(top = 4.dp)) {
+        Column(modifier = Modifier.padding(10.dp)) {
             Text(
                 text = summary.title,
                 style = MaterialTheme.typography.titleSmall,
