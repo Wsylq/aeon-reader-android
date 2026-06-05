@@ -49,10 +49,8 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [x] Line spacing / margins / text alignment settings
 - [x] Immersive full-screen mode (hide status bar + controls)
 - [x] Reading time estimate on feed cards
-- [ ] Open article in browser
-- [ ] <s>Mark as read/unread </s>
-- [ ] Swipe-to-bookmark on feed
-- [ ] Pull-to-refresh on feed
+- [x] Swipe-to-bookmark on feed
+- [x] Pull-to-refresh on feed
 - [ ] Category filter / sort on feed
 - [ ] Search bookmarked/cached articles
 - [ ] Export articles as PDF / plain text
@@ -64,3 +62,4 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [x] Fix read time of articles on feed page
 - [ ] Make an endpoint api like MAL for tracking and retrieving user's data of read articles and all.
 - [ ] Fix a major lag spike while opening and closing articles.
+- [ ] Release notes arent being styled/formatted and just display * * instead of bolding and all. 
