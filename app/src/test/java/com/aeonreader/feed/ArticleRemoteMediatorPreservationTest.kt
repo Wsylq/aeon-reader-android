@@ -61,7 +61,6 @@ class ArticleRemoteMediatorPreservationTest : FunSpec({
         category = null,
         heroImageUrl = null,
         estimatedReadingTimeMinutes = 5,
-        cachedAt = null
     )
 
     fun buildFakeScraper(

@@ -46,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -403,40 +404,40 @@ private fun SwipeableFeedItem(
     content: @Composable () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val offsetX = remember { Animatable(0f) }
+    val dragOffset = remember { mutableFloatStateOf(0f) }
+    val springAnimator = remember { Animatable(0f) }
     val pulseScale = remember { Animatable(1f) }
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
 
     val dragState = rememberDraggableState { delta ->
-        val next = offsetX.value + delta
-        val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
+        val next = dragOffset.floatValue + delta
+        dragOffset.floatValue = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
         else next.coerceIn(0f, thresholdPx * 1.3f)
-        if (clamped != offsetX.value) {
-            scope.launch { offsetX.snapTo(clamped) }
-        }
     }
 
-    val showStar by remember { derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f } }
+    val showStar by remember { derivedStateOf { abs(dragOffset.floatValue) > thresholdPx * 0.3f } }
 
     Box(modifier = Modifier.clipToBounds()) {
         Box(
             modifier = Modifier
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .offset { IntOffset(dragOffset.floatValue.roundToInt(), 0) }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
-                            if (abs(offsetX.value) >= thresholdPx && !isBookmarked) {
+                            if (abs(dragOffset.floatValue) >= thresholdPx && !isBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
                                 pulseScale.snapTo(0.95f)
                                 pulseScale.animateTo(1.05f, spring(dampingRatio = 0.3f, stiffness = 900f))
                                 pulseScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f))
                             }
-                            offsetX.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
+                            springAnimator.snapTo(dragOffset.floatValue)
+                            springAnimator.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
+                            dragOffset.floatValue = 0f
                         }
                     }
                 )

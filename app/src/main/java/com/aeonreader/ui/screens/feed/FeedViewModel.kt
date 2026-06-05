@@ -47,9 +47,6 @@ class FeedViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<FeedUiState>(FeedUiState.Loading)
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
-    private val _cachedUrls = MutableStateFlow<Set<String>>(emptySet())
-    val cachedUrls: StateFlow<Set<String>> = _cachedUrls.asStateFlow()
-
     private val _isOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
 
@@ -125,17 +122,10 @@ class FeedViewModel @Inject constructor(
 
         combineJob?.cancel()
         combineJob = viewModelScope.launch {
-            launch {
-                articleRepository.observeNetworkStatus()
-                    .debounce(300)
-                    .distinctUntilChanged()
-                    .collect { isOnline -> _isOffline.value = !isOnline }
-            }
-            launch {
-                articleRepository.observeCachedArticleUrls()
-                    .distinctUntilChanged()
-                    .collect { urls -> _cachedUrls.value = urls }
-            }
+            articleRepository.observeNetworkStatus()
+                .debounce(300)
+                .distinctUntilChanged()
+                .collect { isOnline -> _isOffline.value = !isOnline }
         }
     }
 

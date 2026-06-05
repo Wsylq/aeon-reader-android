@@ -15,7 +15,7 @@ data class ArticleSummary(
     val category: String?,
     val heroImageUrl: String?,
     val estimatedReadingTimeMinutes: Int,
-    val cachedAt: Long?
+    val cachedAt: Long = 0L
 )
 
 data class Article(

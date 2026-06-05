@@ -50,7 +50,6 @@ class ArticleRemoteMediatorUnitTest : FunSpec({
         category = null,
         heroImageUrl = null,
         estimatedReadingTimeMinutes = 5,
-        cachedAt = null
     )
 
     /** Build a scraper that returns exactly the provided summaries per page number. */

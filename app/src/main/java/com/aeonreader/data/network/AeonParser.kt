@@ -4,7 +4,7 @@ import com.aeonreader.domain.Article
 import com.aeonreader.domain.ArticleSummary
 
 interface AeonParser {
-    fun parseFeedPage(html: String): Result<List<ArticleSummary>>
+    suspend fun parseFeedPage(html: String): Result<List<ArticleSummary>>
     fun parseArticle(html: String): Result<Article>
     suspend fun parseCategories(html: String): Result<List<String>>
     fun parseSearchResults(html: String): Result<List<ArticleSummary>>

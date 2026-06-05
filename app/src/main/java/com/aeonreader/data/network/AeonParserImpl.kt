@@ -21,14 +21,14 @@ import kotlin.math.ceil
 @Singleton
 class AeonParserImpl @Inject constructor() : AeonParser {
 
-    override fun parseFeedPage(html: String): Result<List<ArticleSummary>> {
-        return try {
+    override suspend fun parseFeedPage(html: String): Result<List<ArticleSummary>> = withContext(Dispatchers.Default) {
+        try {
             val isRss = html.trimStart().startsWith("<?xml") || html.contains("<rss")
             val doc = if (isRss) Jsoup.parse(html, "", Parser.xmlParser()) else Jsoup.parse(html)
             val items = doc.select("item")
 
             if (items.isNotEmpty()) {
-                return parseRssItems(items)
+                return@withContext parseRssItems(items)
             }
 
             val cards = doc.select("a[href^=\"/essays/\"]")
@@ -65,11 +65,11 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     category = null,
                     heroImageUrl = heroImage,
                     estimatedReadingTimeMinutes = estimateReadingTime(title, description ?: fallbackDesc),
-                    cachedAt = null
+                    cachedAt = 0L
                 )
             }
 
-            return if (articles.isEmpty()) {
+            return@withContext if (articles.isEmpty()) {
                 Result.failure(Exception("No articles found in feed page"))
             } else {
                 Result.success(articles)
@@ -117,7 +117,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 category = null,
                 heroImageUrl = heroImage,
                 estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
-                cachedAt = null
+                cachedAt = 0L
             )
         }
 
@@ -251,7 +251,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 category = category,
                 heroImageUrl = heroImage,
                 estimatedReadingTimeMinutes = estimateReadingTime(title, description),
-                cachedAt = null
+                cachedAt = 0L
             )
         }
     }
@@ -362,7 +362,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                         category = null,
                         heroImageUrl = null,
                         estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
-                        cachedAt = null
+                        cachedAt = 0L
                     )
                 }
 
@@ -397,7 +397,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                             category = null,
                             heroImageUrl = imageUrl,
                             estimatedReadingTimeMinutes = estimateReadingTime(title, summary.ifBlank { null }),
-                            cachedAt = null
+                            cachedAt = 0L
                         )
                     )
             }
@@ -431,7 +431,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     category = null,
                     heroImageUrl = null,
                     estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
-                    cachedAt = null
+                    cachedAt = 0L
                 )
             }
             if (results.isEmpty()) {
@@ -584,7 +584,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                             heroImageUrl = unescape(parts[4]).ifEmpty { null },
                             category = unescape(parts[5]).ifEmpty { null },
                             estimatedReadingTimeMinutes = estimateReadingTime(rTitle, rDesc),
-                            cachedAt = null
+                            cachedAt = 0L
                         )
                     } else null
                 }.filterNotNull()

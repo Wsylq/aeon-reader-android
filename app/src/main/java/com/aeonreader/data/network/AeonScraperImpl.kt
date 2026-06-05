@@ -63,12 +63,11 @@ class AeonScraperImpl @Inject constructor(
         } else {
             "https://aeon.co/essays?page=$page"
         }
-        return executeRequest(httpClient, url).mapCatching { body ->
-            if (url.endsWith(".rss")) {
-                parser.parseFeedPage(body).getOrThrow()
-            } else {
-                parser.parseFeedPage(body).getOrThrow()
-            }
+        return try {
+            val body = executeRequest(httpClient, url).getOrThrow()
+            parser.parseFeedPage(body)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -78,12 +77,11 @@ class AeonScraperImpl @Inject constructor(
         } else {
             "https://aeon.co/$category?page=$page"
         }
-        return executeRequest(httpClient, url).mapCatching { body ->
-            if (url.endsWith(".rss")) {
-                parser.parseFeedPage(body).getOrThrow()
-            } else {
-                parser.parseFeedPage(body).getOrThrow()
-            }
+        return try {
+            val body = executeRequest(httpClient, url).getOrThrow()
+            parser.parseFeedPage(body)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

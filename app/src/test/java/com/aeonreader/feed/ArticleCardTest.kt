@@ -77,7 +77,6 @@ class ArticleCardTest : FunSpec({
             category = null,
             heroImageUrl = null,
             estimatedReadingTimeMinutes = 5,
-            cachedAt = null
         )
 
         // Build the click lambda the same way FeedContent does

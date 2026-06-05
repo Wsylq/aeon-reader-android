@@ -119,7 +119,6 @@ class ArticleViewModel @Inject constructor(
                     category = state.article.category,
                     heroImageUrl = state.article.heroImageUrl,
                     estimatedReadingTimeMinutes = ceil(state.article.wordCount / 200.0).toInt().coerceAtLeast(1),
-                    cachedAt = null
                 )
                 if (state.isBookmarked) {
                     bookmarkRepository.removeBookmark(state.article.url)

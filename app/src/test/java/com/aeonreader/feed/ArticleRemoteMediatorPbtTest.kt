@@ -45,7 +45,6 @@ class ArticleRemoteMediatorPbtTest : FunSpec({
         category = null,
         heroImageUrl = null,
         estimatedReadingTimeMinutes = 5,
-        cachedAt = null
     )
 
     fun buildFakeScraperForPbt(pageMap: Map<Int, List<ArticleSummary>>): AeonScraper {
