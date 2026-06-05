@@ -69,7 +69,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 )
             }
 
-            return@withContext if (articles.isEmpty()) {
+        return@withContext if (articles.isEmpty()) {
                 Result.failure(Exception("No articles found in feed page"))
             } else {
                 Result.success(articles)
@@ -79,7 +79,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
         }
     }
 
-    private fun parseRssItems(items: Elements): Result<List<ArticleSummary>> {
+    private suspend fun parseRssItems(items: Elements): Result<List<ArticleSummary>> = withContext(Dispatchers.Default) {
         val articles = items.mapNotNull { item ->
             val title = item.selectFirst("title")?.text()?.ifBlank { null } ?: return@mapNotNull null
             val link = item.selectFirst("link")?.text()?.ifBlank { null } ?: return@mapNotNull null
@@ -121,7 +121,7 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             )
         }
 
-        return if (articles.isEmpty()) {
+        return@withContext if (articles.isEmpty()) {
             Result.failure(Exception("No articles parsed from RSS feed"))
         } else {
             Result.success(articles)

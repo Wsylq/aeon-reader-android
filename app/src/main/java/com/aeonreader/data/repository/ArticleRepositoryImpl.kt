@@ -41,7 +41,7 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> {
         return Pager(
-            config = PagingConfig(pageSize = 20, prefetchDistance = 8, enablePlaceholders = false),
+            config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 8, enablePlaceholders = false),
             remoteMediator = ArticleRemoteMediator(
                 category = category,
                 scraper = scraper,

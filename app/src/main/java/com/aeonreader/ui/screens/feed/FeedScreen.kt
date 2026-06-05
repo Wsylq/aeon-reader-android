@@ -41,15 +41,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
+import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
@@ -134,9 +136,8 @@ private fun FeedContent(
     onToggleBookmark: (ArticleSummary) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val bookmarksState = bookmarkedUrls.collectAsState()
     val articlesFlow = state.articles
-    val pagingItems = articlesFlow.collectAsLazyPagingItems()
-    val bookmarksSet by bookmarkedUrls.collectAsState()
 
     Column(modifier = modifier.fillMaxSize()) {
         key("header") {
@@ -166,53 +167,70 @@ private fun FeedContent(
         }
         }
 
-        if (feedLayout == FeedLayout.GRID) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.weight(1f)
-            ) {
-                items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
-                    pagingItems[index]?.let { summary ->
-                        val swipeLeft = index % 2 == 0
-                        val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
-                        val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
-                        SwipeableFeedItem(
-                            summary = summary,
-                            isBookmarked = summary.url in bookmarksSet,
-                            swipeDirection = if (swipeLeft) 0 else 1,
-                            onClick = onClick,
-                            onBookmark = onBookmark,
-                            content = { ArticleGridCard(summary = summary) }
-                        )
-                    }
-                }
+        ArticleList(
+            articlesFlow = articlesFlow,
+            bookmarksState = bookmarksState,
+            feedLayout = feedLayout,
+            onArticleClick = onArticleClick,
+            onToggleBookmark = onToggleBookmark,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
 
-                item(span = { GridItemSpan(2) }) {
-                    FeedFooter(loadState = pagingItems.loadState.append, onRetry = { pagingItems.retry() })
+@Composable
+private fun ArticleList(
+    articlesFlow: Flow<PagingData<ArticleSummary>>,
+    bookmarksState: State<Set<String>>,
+    feedLayout: FeedLayout,
+    onArticleClick: (String) -> Unit,
+    onToggleBookmark: (ArticleSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val pagingItems = articlesFlow.collectAsLazyPagingItems()
+
+    if (feedLayout == FeedLayout.GRID) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = modifier
+        ) {
+            items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
+                pagingItems[index]?.let { summary ->
+                    val swipeLeft = index % 2 == 0
+                    SwipeableFeedItem(
+                        summary = summary,
+                        bookmarksState = bookmarksState,
+                        swipeDirection = if (swipeLeft) 0 else 1,
+                        onClick = { onArticleClick(summary.url) },
+                        onBookmark = { onToggleBookmark(summary) },
+                        content = { ArticleGridCard(summary = summary) }
+                    )
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
-                items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
-                    pagingItems[index]?.let { summary ->
-                        val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
-                        val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
-                        SwipeableFeedItem(
-                            summary = summary,
-                            isBookmarked = summary.url in bookmarksSet,
-                            swipeDirection = 1,
-                            onClick = onClick,
-                            onBookmark = onBookmark,
-                            content = { ArticleRow(summary = summary) }
-                        )
-                    }
-                }
 
-                item {
-                    FeedFooter(loadState = pagingItems.loadState.append, onRetry = { pagingItems.retry() })
+            item(span = { GridItemSpan(2) }) {
+                FeedFooter(loadState = pagingItems.loadState.append, onRetry = { pagingItems.retry() })
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier
+        ) {
+            items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
+                pagingItems[index]?.let { summary ->
+                    SwipeableFeedItem(
+                        summary = summary,
+                        bookmarksState = bookmarksState,
+                        swipeDirection = 1,
+                        onClick = { onArticleClick(summary.url) },
+                        onBookmark = { onToggleBookmark(summary) },
+                        content = { ArticleRow(summary = summary) }
+                    )
                 }
+            }
+
+            item {
+                FeedFooter(loadState = pagingItems.loadState.append, onRetry = { pagingItems.retry() })
             }
         }
     }
@@ -395,16 +413,15 @@ private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    isBookmarked: Boolean,
+    bookmarksState: State<Set<String>>,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val isItemBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
     val scope = rememberCoroutineScope()
     val dragOffset = remember { mutableFloatStateOf(0f) }
-    val springAnimator = remember { Animatable(0f) }
-    val pulseScale = remember { Animatable(1f) }
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
@@ -426,15 +443,11 @@ private fun SwipeableFeedItem(
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
-                            if (abs(dragOffset.floatValue) >= thresholdPx && !isBookmarked) {
+                            if (abs(dragOffset.floatValue) >= thresholdPx && !isItemBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
-                                pulseScale.snapTo(0.95f)
-                                pulseScale.animateTo(1.05f, spring(dampingRatio = 0.3f, stiffness = 900f))
-                                pulseScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f))
                             }
-                            springAnimator.snapTo(dragOffset.floatValue)
-                            springAnimator.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f)) {
+                            Animatable(dragOffset.floatValue).animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f)) {
                                 dragOffset.floatValue = this.value
                             }
                             dragOffset.floatValue = 0f
