@@ -22,9 +22,9 @@ class ImageCache @Inject constructor(
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    fun getCachedFile(url: String): File? {
+    suspend fun getCachedFile(url: String): File? = withContext(Dispatchers.IO) {
         val file = File(cacheDir, hash(url))
-        return file.takeIf { it.exists() }
+        file.takeIf { it.exists() }
     }
 
     suspend fun cacheImage(url: String): File? = withContext(Dispatchers.IO) {

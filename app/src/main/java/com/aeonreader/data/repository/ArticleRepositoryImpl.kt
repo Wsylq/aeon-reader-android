@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -104,10 +105,10 @@ class ArticleRepositoryImpl @Inject constructor(
         return entity.toDomainArticle(parser)
     }
 
-    override suspend fun getCategories(): Result<List<String>> {
-        return try {
+    override suspend fun getCategories(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
             val categories = scraper.fetchCategories().getOrElse { error ->
-                return Result.failure(error)
+                return@withContext Result.failure(error)
             }
             Result.success(categories)
         } catch (e: Exception) {

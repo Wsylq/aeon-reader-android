@@ -408,37 +408,35 @@ private fun SwipeableFeedItem(
     val density = LocalDensity.current
     val thresholdPx = with(density) { 150.dp.toPx() }
     val haptic = LocalHapticFeedback.current
-    val isDragging = remember { mutableStateOf(false) }
-    val dragOffset = remember { mutableStateOf(0f) }
 
     val dragState = rememberDraggableState { delta ->
-        isDragging.value = true
-        val next = dragOffset.value + delta
+        val next = offsetX.value + delta
         val clamped = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
         else next.coerceIn(0f, thresholdPx * 1.3f)
-        dragOffset.value = clamped
+        if (clamped != offsetX.value) {
+            scope.launch { offsetX.snapTo(clamped) }
+        }
     }
+
+    val showStar by remember { derivedStateOf { abs(offsetX.value) > thresholdPx * 0.3f } }
 
     Box(modifier = Modifier.clipToBounds()) {
         Box(
             modifier = Modifier
-                .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
-                            isDragging.value = false
-                            if (abs(dragOffset.value) >= thresholdPx && !isBookmarked) {
+                            if (abs(offsetX.value) >= thresholdPx && !isBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
                                 pulseScale.snapTo(0.95f)
                                 pulseScale.animateTo(1.05f, spring(dampingRatio = 0.3f, stiffness = 900f))
                                 pulseScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f))
                             }
-                            offsetX.snapTo(dragOffset.value)
                             offsetX.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
-                            dragOffset.value = 0f
                         }
                     }
                 )
@@ -449,7 +447,7 @@ private fun SwipeableFeedItem(
                 )
         ) {
             content()
-            if (isDragging.value && abs(dragOffset.value) > thresholdPx * 0.3f) {
+            if (showStar) {
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = "Bookmark",
