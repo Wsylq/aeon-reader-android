@@ -3,6 +3,7 @@ package com.aeonreader.data.local
 import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.RoomWarnings
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -12,13 +13,15 @@ interface ArticleDao {
     @Upsert
     suspend fun upsertSummaries(summaries: List<ArticleSummaryEntity>)
 
-    @Query("SELECT * FROM article_summaries WHERE category = :category ORDER BY pageOrder ASC")
+    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
+    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE category = :category ORDER BY pageOrder ASC")
     fun getSummariesByCategory(category: String): PagingSource<Int, ArticleSummaryEntity>
 
     @Query("SELECT url, cachedAt FROM article_summaries WHERE url IN (:urls)")
     suspend fun getSummaryTimestamps(urls: List<String>): List<UrlTimestamp>
 
-    @Query("SELECT * FROM article_summaries ORDER BY pageOrder ASC")
+    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
+    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries ORDER BY pageOrder ASC")
     fun getAllSummaries(): PagingSource<Int, ArticleSummaryEntity>
 
     @Query("SELECT * FROM articles WHERE url = :url")

@@ -163,6 +163,13 @@ class ArticleRemoteMediator(
     private val remoteKeyDao: RemoteKeyDao
 ) : RemoteMediator<Int, ArticleSummaryEntity>() {
 
+    override suspend fun initialize(): RemoteMediator.InitializeAction {
+        val key = remoteKeyDao.get(category ?: "all")
+        val isFresh = key != null && (System.currentTimeMillis() - key.lastUpdated) < 5 * 60 * 1000L
+        return if (isFresh) RemoteMediator.InitializeAction.SKIP_INITIAL_REFRESH
+        else RemoteMediator.InitializeAction.LAUNCH_INITIAL_REFRESH
+    }
+
     override suspend fun load(
         loadType: LoadType,
         state: PagingState<Int, ArticleSummaryEntity>
@@ -195,26 +202,30 @@ class ArticleRemoteMediator(
             }
 
             val now = System.currentTimeMillis()
-            val existingTimestamps = articleDao.getSummaryTimestamps(
+            val existingUrls = articleDao.getSummaryTimestamps(
                 summaries.map { it.url }
-            ).associate { it.url to it.cachedAt }
-            val entities = summaries.mapIndexed { index, summary ->
-                ArticleSummaryEntity(
-                    url = summary.url,
-                    title = summary.title,
-                    description = summary.description,
-                    author = summary.author,
-                    category = summary.category,
-                    heroImageUrl = summary.heroImageUrl,
-                    estimatedReadingTimeMinutes = summary.estimatedReadingTimeMinutes,
-                    cachedAt = existingTimestamps[summary.url] ?: now,
-                    lastAccessedAt = now,
-                    page = page,
-                    pageOrder = (page - 1) * state.config.pageSize + index
-                )
-            }
+            ).map { it.url }.toSet()
+            val entities = summaries
+                .filter { it.url !in existingUrls }
+                .mapIndexed { index, summary ->
+                    ArticleSummaryEntity(
+                        url = summary.url,
+                        title = summary.title,
+                        description = summary.description,
+                        author = summary.author,
+                        category = summary.category,
+                        heroImageUrl = summary.heroImageUrl,
+                        estimatedReadingTimeMinutes = summary.estimatedReadingTimeMinutes,
+                        cachedAt = now,
+                        lastAccessedAt = now,
+                        page = page,
+                        pageOrder = (page - 1) * state.config.pageSize + index
+                    )
+                }
 
-            articleDao.upsertSummaries(entities)
+            if (entities.isNotEmpty()) {
+                articleDao.upsertSummaries(entities)
+            }
             remoteKeyDao.upsert(
                 RemoteKeyEntity(
                     category = category ?: "all",

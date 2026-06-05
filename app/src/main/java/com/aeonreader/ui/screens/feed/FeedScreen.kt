@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,11 +107,10 @@ fun FeedScreen(
             }
         }
         is FeedUiState.Success -> {
-            val bookmarksSet by viewModel.bookmarkedUrls.collectAsState()
             FeedContent(
                 state = state,
                 feedLayout = feedLayout,
-                bookmarksSet = bookmarksSet,
+                bookmarkedUrls = viewModel.bookmarkedUrls,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
@@ -126,7 +126,7 @@ fun FeedScreen(
 private fun FeedContent(
     state: FeedUiState.Success,
     feedLayout: FeedLayout,
-    bookmarksSet: Set<String>,
+    bookmarkedUrls: StateFlow<Set<String>>,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
@@ -177,7 +177,7 @@ private fun FeedContent(
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            bookmarksSet = bookmarksSet,
+                            bookmarkedUrls = bookmarkedUrls,
                             swipeDirection = if (swipeLeft) 0 else 1,
                             onClick = onClick,
                             onBookmark = onBookmark,
@@ -200,7 +200,7 @@ private fun FeedContent(
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            bookmarksSet = bookmarksSet,
+                            bookmarkedUrls = bookmarkedUrls,
                             swipeDirection = 1,
                             onClick = onClick,
                             onBookmark = onBookmark,
@@ -394,13 +394,13 @@ private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    bookmarksSet: Set<String>,
+    bookmarkedUrls: StateFlow<Set<String>>,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val isItemBookmarked by remember(summary.url) { derivedStateOf { bookmarksSet.contains(summary.url) } }
+    val isItemBookmarked by remember(summary.url) { derivedStateOf { bookmarkedUrls.value.contains(summary.url) } }
     val scope = rememberCoroutineScope()
     val dragOffset = remember { mutableFloatStateOf(0f) }
     val springAnimator = remember { Animatable(0f) }

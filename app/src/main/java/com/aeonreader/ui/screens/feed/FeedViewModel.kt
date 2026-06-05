@@ -60,6 +60,7 @@ class FeedViewModel @Inject constructor(
     private var selectedCategory: String = "all"
     private var pagingFlow: Flow<PagingData<ArticleSummary>>? = null
     private var combineJob: Job? = null
+    private var categoriesJob: Job? = null
 
     init {
         loadInitial()
@@ -103,7 +104,8 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun loadCategories() {
-        viewModelScope.launch {
+        categoriesJob?.cancel()
+        categoriesJob = viewModelScope.launch {
             val result = articleRepository.getCategories()
             if (result.isSuccess) {
                 categories = result.getOrDefault(emptyList())
