@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,7 +62,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
@@ -75,7 +73,6 @@ import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 @Composable
 fun FeedScreen(
@@ -180,7 +177,7 @@ private fun FeedContent(
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            isBookmarked = bookmarksSet.contains(summary.url),
+                            bookmarksSet = bookmarksSet,
                             swipeDirection = if (swipeLeft) 0 else 1,
                             onClick = onClick,
                             onBookmark = onBookmark,
@@ -203,7 +200,7 @@ private fun FeedContent(
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            isBookmarked = bookmarksSet.contains(summary.url),
+                            bookmarksSet = bookmarksSet,
                             swipeDirection = 1,
                             onClick = onClick,
                             onBookmark = onBookmark,
@@ -397,12 +394,13 @@ private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    isBookmarked: Boolean,
+    bookmarksSet: Set<String>,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val isItemBookmarked by remember(summary.url) { derivedStateOf { bookmarksSet.contains(summary.url) } }
     val scope = rememberCoroutineScope()
     val dragOffset = remember { mutableFloatStateOf(0f) }
     val springAnimator = remember { Animatable(0f) }
@@ -422,13 +420,13 @@ private fun SwipeableFeedItem(
     Box(modifier = Modifier.clipToBounds()) {
         Box(
             modifier = Modifier
-                .offset { IntOffset(dragOffset.floatValue.roundToInt(), 0) }
+                .graphicsLayer { translationX = dragOffset.floatValue }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
-                            if (abs(dragOffset.floatValue) >= thresholdPx && !isBookmarked) {
+                            if (abs(dragOffset.floatValue) >= thresholdPx && !isItemBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
                                 pulseScale.snapTo(0.95f)
@@ -436,7 +434,9 @@ private fun SwipeableFeedItem(
                                 pulseScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f))
                             }
                             springAnimator.snapTo(dragOffset.floatValue)
-                            springAnimator.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
+                            springAnimator.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f)) {
+                                dragOffset.floatValue = this.value
+                            }
                             dragOffset.floatValue = 0f
                         }
                     }
