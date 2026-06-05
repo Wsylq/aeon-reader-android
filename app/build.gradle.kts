@@ -14,8 +14,8 @@ android {
         applicationId = "com.aeonreader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.10.58"
+        versionCode = 9
+        versionName = "0.10.59"
 
         testInstrumentationRunner = "com.aeonreader.HiltTestRunner"
     }
@@ -23,6 +23,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -50,6 +51,10 @@ android {
                 it.useJUnitPlatform()
             }
         }
+    }
+
+    lint {
+        disable += "RemoveWorkManagerInitializer"
     }
 }
 
