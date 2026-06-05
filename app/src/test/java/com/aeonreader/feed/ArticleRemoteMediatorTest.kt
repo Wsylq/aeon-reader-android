@@ -7,6 +7,7 @@ import androidx.paging.PagingState
 import com.aeonreader.data.local.ArticleDao
 import com.aeonreader.data.local.ArticleEntity
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.local.HighlightedWordEntity
 import com.aeonreader.data.local.RemoteKeyDao
 import com.aeonreader.data.local.RemoteKeyEntity
@@ -166,7 +167,7 @@ class ArticleRemoteMediatorTest : FunSpec({
         )
 
         val pagingConfig = PagingConfig(pageSize = 20, enablePlaceholders = false)
-        val emptyPagingState = PagingState<Int, ArticleSummaryEntity>(
+        val emptyPagingState = PagingState<Int, ArticleSummaryProjection>(
             pages = emptyList(),
             anchorPosition = null,
             config = pagingConfig,

@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
-import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
@@ -174,12 +174,12 @@ class FeedViewModel @Inject constructor(
     }
 }
 
-private fun ArticleSummaryEntity.toArticleSummary(): ArticleSummary {
+private fun ArticleSummaryProjection.toArticleSummary(): ArticleSummary {
     return ArticleSummary(
         url = url,
         title = title,
-        description = description,
-        author = author,
+        description = null,
+        author = null,
         category = category,
         heroImageUrl = heroImageUrl,
         estimatedReadingTimeMinutes = estimatedReadingTimeMinutes,

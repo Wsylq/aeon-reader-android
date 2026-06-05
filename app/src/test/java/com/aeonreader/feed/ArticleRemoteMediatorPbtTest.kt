@@ -5,6 +5,7 @@ import androidx.paging.LoadType
 import androidx.paging.PagingConfig
 import androidx.paging.PagingState
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.network.AeonScraper
 import com.aeonreader.data.repository.ArticleRemoteMediator
 import com.aeonreader.domain.ArticleSummary
@@ -123,7 +124,7 @@ class ArticleRemoteMediatorPbtTest : FunSpec({
         }
     }
 
-    fun emptyPagingStateForPbt(pageSize: Int) = PagingState<Int, ArticleSummaryEntity>(
+    fun emptyPagingStateForPbt(pageSize: Int) = PagingState<Int, ArticleSummaryProjection>(
         pages = emptyList(),
         anchorPosition = null,
         config = PagingConfig(pageSize = pageSize, enablePlaceholders = false),

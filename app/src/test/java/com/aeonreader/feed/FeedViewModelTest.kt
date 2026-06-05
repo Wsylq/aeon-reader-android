@@ -2,9 +2,14 @@ package com.aeonreader.feed
 
 import androidx.paging.PagingData
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.repository.ArticleRepository
+import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.Article
+import com.aeonreader.domain.ArticleSummary
+import com.aeonreader.domain.Bookmark
+import com.aeonreader.domain.FeedLayout
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ThemeOverride
 import com.aeonreader.ui.screens.feed.FeedUiState
@@ -71,11 +76,11 @@ class FeedViewModelTest : FunSpec({
             val cachedUrlsFlow = MutableStateFlow<Set<String>>(emptySet())
 
             // A single stable pagingFlow — same object reference throughout
-            val stablePagingFlow: Flow<PagingData<ArticleSummaryEntity>> =
+            val stablePagingFlow: Flow<PagingData<ArticleSummaryProjection>> =
                 flowOf(PagingData.empty())
 
             val fakeRepository = object : ArticleRepository {
-                override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> =
+                override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> =
                     stablePagingFlow
 
                 override suspend fun getArticle(url: String): Result<Article> =
@@ -96,13 +101,22 @@ class FeedViewModelTest : FunSpec({
                 override val themeOverride: Flow<ThemeOverride> = flowOf(ThemeOverride.NONE)
                 override val readingPreferences: Flow<ReadingPreferences> =
                     flowOf(ReadingPreferences())
+                override val feedLayout: Flow<FeedLayout> = flowOf(FeedLayout.LIST)
                 override suspend fun setSelectedCategory(category: String) {}
                 override suspend fun setThemeOverride(override: ThemeOverride) {}
                 override suspend fun setReadingPreferences(prefs: ReadingPreferences) {}
+                override suspend fun setFeedLayout(layout: FeedLayout) {}
+            }
+
+            val fakeBookmarkRepository = object : BookmarkRepository {
+                override fun observeBookmarks(): Flow<List<Bookmark>> = flowOf(emptyList())
+                override fun observeBookmarkState(articleUrl: String): Flow<Boolean> = flowOf(false)
+                override suspend fun addBookmark(article: ArticleSummary): Result<Unit> = Result.success(Unit)
+                override suspend fun removeBookmark(articleUrl: String): Result<Unit> = Result.success(Unit)
             }
 
             // ---------- create ViewModel and advance past init ----------
-            val viewModel = FeedViewModel(fakeRepository, fakePrefsRepository)
+            val viewModel = FeedViewModel(fakeRepository, fakePrefsRepository, fakeBookmarkRepository)
             advanceUntilIdle()
 
             // Emit first networkStatus value (online = true) — pagingFlow does NOT change

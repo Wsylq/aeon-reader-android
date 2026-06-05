@@ -11,6 +11,7 @@ import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.data.local.ArticleDao
 import com.aeonreader.data.local.ArticleEntity
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.local.RemoteKeyDao
 import com.aeonreader.data.local.RemoteKeyEntity
 import com.aeonreader.data.network.AeonParser
@@ -38,7 +39,7 @@ class ArticleRepositoryImpl @Inject constructor(
     private val imageCache: ImageCache
 ) : ArticleRepository {
 
-    override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> {
+    override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> {
         return Pager(
             config = PagingConfig(pageSize = 20, prefetchDistance = 8, enablePlaceholders = false),
             remoteMediator = ArticleRemoteMediator(
@@ -161,7 +162,7 @@ class ArticleRemoteMediator(
     private val scraper: AeonScraper,
     private val articleDao: ArticleDao,
     private val remoteKeyDao: RemoteKeyDao
-) : RemoteMediator<Int, ArticleSummaryEntity>() {
+) : RemoteMediator<Int, ArticleSummaryProjection>() {
 
     override suspend fun initialize(): RemoteMediator.InitializeAction {
         val key = remoteKeyDao.get(category ?: "all")
@@ -172,7 +173,7 @@ class ArticleRemoteMediator(
 
     override suspend fun load(
         loadType: LoadType,
-        state: PagingState<Int, ArticleSummaryEntity>
+        state: PagingState<Int, ArticleSummaryProjection>
     ): RemoteMediator.MediatorResult {
         return try {
             val page = when (loadType) {
@@ -225,14 +226,14 @@ class ArticleRemoteMediator(
 
             if (entities.isNotEmpty()) {
                 articleDao.upsertSummaries(entities)
-            }
-            remoteKeyDao.upsert(
-                RemoteKeyEntity(
-                    category = category ?: "all",
-                    nextPage = if (summaries.isEmpty()) null else page + 1,
-                    lastUpdated = now
+                remoteKeyDao.upsert(
+                    RemoteKeyEntity(
+                        category = category ?: "all",
+                        nextPage = if (summaries.isEmpty()) null else page + 1,
+                        lastUpdated = now
+                    )
                 )
-            )
+            }
 
             RemoteMediator.MediatorResult.Success(
                 endOfPaginationReached = summaries.isEmpty()

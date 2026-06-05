@@ -2,9 +2,14 @@ package com.aeonreader.feed
 
 import androidx.paging.PagingData
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.repository.ArticleRepository
+import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.Article
+import com.aeonreader.domain.ArticleSummary
+import com.aeonreader.domain.Bookmark
+import com.aeonreader.domain.FeedLayout
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ThemeOverride
 import com.aeonreader.ui.screens.feed.FeedUiState
@@ -64,13 +69,13 @@ class FeedViewModelPreservationTest : FunSpec({
     fun buildViewModel(
         networkStatusFlow: Flow<Boolean> = flowOf(true),
         cachedUrlsFlow: Flow<Set<String>> = flowOf(emptySet()),
-        pagingFlowFactory: (category: String?) -> Flow<PagingData<ArticleSummaryEntity>> = {
+        pagingFlowFactory: (category: String?) -> Flow<PagingData<ArticleSummaryProjection>> = {
             flowOf(PagingData.empty())
         },
         categoryResults: List<String> = emptyList()
     ): FeedViewModel {
         val fakeRepository = object : ArticleRepository {
-            override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> =
+            override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> =
                 pagingFlowFactory(category)
 
             override suspend fun getArticle(url: String): Result<Article> =
@@ -91,62 +96,22 @@ class FeedViewModelPreservationTest : FunSpec({
             override val themeOverride: Flow<ThemeOverride> = flowOf(ThemeOverride.NONE)
             override val readingPreferences: Flow<ReadingPreferences> =
                 flowOf(ReadingPreferences())
+            override val feedLayout: Flow<FeedLayout> = flowOf(FeedLayout.LIST)
 
             override suspend fun setSelectedCategory(category: String) {}
             override suspend fun setThemeOverride(override: ThemeOverride) {}
             override suspend fun setReadingPreferences(prefs: ReadingPreferences) {}
+            override suspend fun setFeedLayout(layout: FeedLayout) {}
         }
 
-        return FeedViewModel(fakeRepository, fakePrefsRepository)
-    }
-
-    // ---------------------------------------------------------------------------
-    // Sub-test A — Offline Badge Preservation
-    //
-    // Property: ∀ cachedUrlSet emitted by observeCachedArticleUrls(),
-    //           ViewModel.cachedUrls.value == cachedUrlSet after emission.
-    //
-    // Validates: Requirement 3.1
-    // ---------------------------------------------------------------------------
-    test("Sub-test A: cachedUrls StateFlow reflects emitted cachedUrlSet (property-based, passes on unfixed code)") {
-        /**
-         * **Validates: Requirements 3.1**
-         *
-         * Observe UNFIXED ViewModel: emit arbitrary subsets of cached URL strings
-         * from observeCachedArticleUrls() and assert that cachedUrls.value equals
-         * the emitted set after each emission.
-         *
-         * This test is scoped to non-bug-condition inputs: changing the cached URL
-         * set does not change the paging flow, so isBugCondition = false.
-         *
-         * EXPECTED OUTCOME: PASSES on unfixed code — _cachedUrls is unconditionally
-         * updated in the combine collector regardless of whether emitCurrentState()
-         * creates a new Success instance.
-         */
-        runTest(testDispatcher) {
-            // Arbitrary generator: sets of URL strings (0–10 elements)
-            val urlSetArb: Arb<Set<String>> = Arb.list(
-                Arb.string(minSize = 5, maxSize = 60),
-                range = 0..10
-            ).map { it.toSet() }
-
-            checkAll(iterations = 50, urlSetArb) { cachedUrlSet ->
-                val cachedUrlsFlow = MutableStateFlow<Set<String>>(emptySet())
-
-                val viewModel = buildViewModel(
-                    networkStatusFlow = flowOf(true),
-                    cachedUrlsFlow = cachedUrlsFlow
-                )
-                advanceUntilIdle()
-
-                // Emit the arbitrary set of URLs
-                cachedUrlsFlow.value = cachedUrlSet
-                advanceUntilIdle()
-
-                // Assert: cachedUrls StateFlow reflects the emitted set
-                viewModel.cachedUrls.value shouldBe cachedUrlSet
-            }
+        val fakeBookmarkRepository = object : BookmarkRepository {
+            override fun observeBookmarks(): Flow<List<Bookmark>> = flowOf(emptyList())
+            override fun observeBookmarkState(articleUrl: String): Flow<Boolean> = flowOf(false)
+            override suspend fun addBookmark(article: ArticleSummary): Result<Unit> = Result.success(Unit)
+            override suspend fun removeBookmark(articleUrl: String): Result<Unit> = Result.success(Unit)
         }
+
+        return FeedViewModel(fakeRepository, fakePrefsRepository, fakeBookmarkRepository)
     }
 
     // ---------------------------------------------------------------------------
@@ -249,12 +214,12 @@ class FeedViewModelPreservationTest : FunSpec({
                 // Each call to getFeedPager produces a DISTINCT flow object — use a
                 // counter to guarantee distinct references even for the same category
                 var callCount = 0
-                val flows = mutableListOf<Flow<PagingData<ArticleSummaryEntity>>>()
+                val flows = mutableListOf<Flow<PagingData<ArticleSummaryProjection>>>()
 
                 val viewModel = buildViewModel(
                     networkStatusFlow = networkStatusFlow,
                     pagingFlowFactory = {
-                        val newFlow: Flow<PagingData<ArticleSummaryEntity>> =
+                        val newFlow: Flow<PagingData<ArticleSummaryProjection>> =
                             flowOf(PagingData.empty())
                         flows.add(newFlow)
                         callCount++

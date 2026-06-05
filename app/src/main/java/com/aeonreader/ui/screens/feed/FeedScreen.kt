@@ -136,6 +136,7 @@ private fun FeedContent(
 ) {
     val articlesFlow = state.articles
     val pagingItems = articlesFlow.collectAsLazyPagingItems()
+    val bookmarksSet by bookmarkedUrls.collectAsState()
 
     Column(modifier = modifier.fillMaxSize()) {
         key("header") {
@@ -177,7 +178,7 @@ private fun FeedContent(
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            bookmarkedUrls = bookmarkedUrls,
+                            isBookmarked = summary.url in bookmarksSet,
                             swipeDirection = if (swipeLeft) 0 else 1,
                             onClick = onClick,
                             onBookmark = onBookmark,
@@ -200,7 +201,7 @@ private fun FeedContent(
                         val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                         SwipeableFeedItem(
                             summary = summary,
-                            bookmarkedUrls = bookmarkedUrls,
+                            isBookmarked = summary.url in bookmarksSet,
                             swipeDirection = 1,
                             onClick = onClick,
                             onBookmark = onBookmark,
@@ -394,13 +395,12 @@ private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    bookmarkedUrls: StateFlow<Set<String>>,
+    isBookmarked: Boolean,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val isItemBookmarked by remember(summary.url) { derivedStateOf { bookmarkedUrls.value.contains(summary.url) } }
     val scope = rememberCoroutineScope()
     val dragOffset = remember { mutableFloatStateOf(0f) }
     val springAnimator = remember { Animatable(0f) }
@@ -426,7 +426,7 @@ private fun SwipeableFeedItem(
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
-                            if (abs(dragOffset.floatValue) >= thresholdPx && !isItemBookmarked) {
+                            if (abs(dragOffset.floatValue) >= thresholdPx && !isBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
                                 pulseScale.snapTo(0.95f)

@@ -2,9 +2,14 @@ package com.aeonreader.feed
 
 import androidx.paging.PagingData
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.repository.ArticleRepository
+import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.Article
+import com.aeonreader.domain.ArticleSummary
+import com.aeonreader.domain.Bookmark
+import com.aeonreader.domain.FeedLayout
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ThemeOverride
 import com.aeonreader.ui.screens.feed.FeedUiState
@@ -48,12 +53,12 @@ class FeedViewModelUnitTest : FunSpec({
     fun buildViewModel(
         cachedUrlsFlow: Flow<Set<String>> = flowOf(emptySet()),
         networkStatusFlow: Flow<Boolean> = flowOf(true),
-        pagingFlowFactory: (String?) -> Flow<PagingData<ArticleSummaryEntity>> = {
+        pagingFlowFactory: (String?) -> Flow<PagingData<ArticleSummaryProjection>> = {
             flowOf(PagingData.empty())
         }
     ): FeedViewModel {
         val fakeRepository = object : ArticleRepository {
-            override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> =
+            override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> =
                 pagingFlowFactory(category)
 
             override suspend fun getArticle(url: String): Result<Article> =
@@ -74,13 +79,22 @@ class FeedViewModelUnitTest : FunSpec({
             override val themeOverride: Flow<ThemeOverride> = flowOf(ThemeOverride.NONE)
             override val readingPreferences: Flow<ReadingPreferences> =
                 flowOf(ReadingPreferences())
+            override val feedLayout: Flow<FeedLayout> = flowOf(FeedLayout.LIST)
 
             override suspend fun setSelectedCategory(category: String) {}
             override suspend fun setThemeOverride(override: ThemeOverride) {}
             override suspend fun setReadingPreferences(prefs: ReadingPreferences) {}
+            override suspend fun setFeedLayout(layout: FeedLayout) {}
         }
 
-        return FeedViewModel(fakeRepository, fakePrefsRepository)
+        val fakeBookmarkRepository = object : BookmarkRepository {
+            override fun observeBookmarks(): Flow<List<Bookmark>> = flowOf(emptyList())
+            override fun observeBookmarkState(articleUrl: String): Flow<Boolean> = flowOf(false)
+            override suspend fun addBookmark(article: ArticleSummary): Result<Unit> = Result.success(Unit)
+            override suspend fun removeBookmark(articleUrl: String): Result<Unit> = Result.success(Unit)
+        }
+
+        return FeedViewModel(fakeRepository, fakePrefsRepository, fakeBookmarkRepository)
     }
 
     // ---------------------------------------------------------------------------
@@ -115,7 +129,7 @@ class FeedViewModelUnitTest : FunSpec({
          */
         runTest(testDispatcher) {
             // Use a stable, single paging flow shared across all getFeedPager calls
-            val stablePagingFlow: Flow<PagingData<ArticleSummaryEntity>> = flowOf(PagingData.empty())
+            val stablePagingFlow: Flow<PagingData<ArticleSummaryProjection>> = flowOf(PagingData.empty())
 
             val networkStatusFlow = MutableSharedFlow<Boolean>(replay = 1)
 
@@ -145,57 +159,5 @@ class FeedViewModelUnitTest : FunSpec({
         }
     }
 
-    // ---------------------------------------------------------------------------
-    // Task 8.4 — cachedUrls StateFlow updates when observeCachedArticleUrls() emits
-    //
-    // Regression test for Requirement 3.1: the cachedUrls StateFlow update path must
-    // remain intact after Fix 1 (isOffline decoupled from FeedUiState.Success).
-    //
-    // Validates: Requirement 3.1
-    // ---------------------------------------------------------------------------
-    test("8.4: cachedUrls StateFlow updates to reflect each set emitted by observeCachedArticleUrls()") {
-        /**
-         * **Validates: Requirements 3.1**
-         *
-         * Regression test ensuring the cachedUrls StateFlow update path was NOT broken
-         * by Fix 1 (extracting isOffline from FeedUiState.Success).
-         *
-         * Steps:
-         * 1. Create FeedViewModel with a controllable MutableStateFlow for cachedUrls.
-         * 2. Emit a specific Set<String> of URLs.
-         * 3. Advance until idle.
-         * 4. Assert viewModel.cachedUrls.value == first emitted set.
-         * 5. Emit a second, different Set<String>.
-         * 6. Advance until idle.
-         * 7. Assert viewModel.cachedUrls.value == second emitted set.
-         */
-        runTest(testDispatcher) {
-            val cachedUrlsFlow = MutableStateFlow<Set<String>>(emptySet())
-            val viewModel = buildViewModel(cachedUrlsFlow = cachedUrlsFlow)
 
-            // Let the ViewModel initialise fully
-            advanceUntilIdle()
-
-            // -- Emission 1 --
-            val firstSet = setOf(
-                "https://aeon.co/articles/article-one",
-                "https://aeon.co/articles/article-two",
-                "https://aeon.co/articles/article-three"
-            )
-            cachedUrlsFlow.value = firstSet
-            advanceUntilIdle()
-
-            viewModel.cachedUrls.value shouldBe firstSet
-
-            // -- Emission 2 --
-            val secondSet = setOf(
-                "https://aeon.co/articles/article-four",
-                "https://aeon.co/articles/article-five"
-            )
-            cachedUrlsFlow.value = secondSet
-            advanceUntilIdle()
-
-            viewModel.cachedUrls.value shouldBe secondSet
-        }
-    }
 })

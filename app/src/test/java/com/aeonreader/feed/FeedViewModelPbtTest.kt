@@ -2,9 +2,14 @@ package com.aeonreader.feed
 
 import androidx.paging.PagingData
 import com.aeonreader.data.local.ArticleSummaryEntity
+import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.repository.ArticleRepository
+import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.Article
+import com.aeonreader.domain.ArticleSummary
+import com.aeonreader.domain.Bookmark
+import com.aeonreader.domain.FeedLayout
 import com.aeonreader.domain.ReadingPreferences
 import com.aeonreader.domain.ThemeOverride
 import com.aeonreader.ui.screens.feed.FeedUiState
@@ -62,12 +67,12 @@ class FeedViewModelPbtTest : FunSpec({
     fun buildViewModel(
         networkStatusFlow: Flow<Boolean> = flowOf(true),
         cachedUrlsFlow: Flow<Set<String>> = flowOf(emptySet()),
-        pagingFlowFactory: (String?) -> Flow<PagingData<ArticleSummaryEntity>> = {
+        pagingFlowFactory: (String?) -> Flow<PagingData<ArticleSummaryProjection>> = {
             flowOf(PagingData.empty())
         }
     ): FeedViewModel {
         val fakeRepository = object : ArticleRepository {
-            override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryEntity>> =
+            override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> =
                 pagingFlowFactory(category)
 
             override suspend fun getArticle(url: String): Result<Article> =
@@ -88,13 +93,22 @@ class FeedViewModelPbtTest : FunSpec({
             override val themeOverride: Flow<ThemeOverride> = flowOf(ThemeOverride.NONE)
             override val readingPreferences: Flow<ReadingPreferences> =
                 flowOf(ReadingPreferences())
+            override val feedLayout: Flow<FeedLayout> = flowOf(FeedLayout.LIST)
 
             override suspend fun setSelectedCategory(category: String) {}
             override suspend fun setThemeOverride(override: ThemeOverride) {}
             override suspend fun setReadingPreferences(prefs: ReadingPreferences) {}
+            override suspend fun setFeedLayout(layout: FeedLayout) {}
         }
 
-        return FeedViewModel(fakeRepository, fakePrefsRepository)
+        val fakeBookmarkRepository = object : BookmarkRepository {
+            override fun observeBookmarks(): Flow<List<Bookmark>> = flowOf(emptyList())
+            override fun observeBookmarkState(articleUrl: String): Flow<Boolean> = flowOf(false)
+            override suspend fun addBookmark(article: ArticleSummary): Result<Unit> = Result.success(Unit)
+            override suspend fun removeBookmark(articleUrl: String): Result<Unit> = Result.success(Unit)
+        }
+
+        return FeedViewModel(fakeRepository, fakePrefsRepository, fakeBookmarkRepository)
     }
 
     // ---------------------------------------------------------------------------
@@ -141,7 +155,7 @@ class FeedViewModelPbtTest : FunSpec({
 
             checkAll(iterations = 30, networkSeqArb, cachedUrlSeqArb) { networkSeq, cachedSeq ->
                 // Stable pagingFlow — same reference regardless of category argument
-                val stablePagingFlow: Flow<PagingData<ArticleSummaryEntity>> =
+                val stablePagingFlow: Flow<PagingData<ArticleSummaryProjection>> =
                     flowOf(PagingData.empty())
 
                 val networkStatusFlow = MutableSharedFlow<Boolean>(replay = 1)

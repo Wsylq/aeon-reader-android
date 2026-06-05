@@ -3,9 +3,20 @@ package com.aeonreader.data.local
 import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Query
-import androidx.room.RoomWarnings
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
+
+data class ArticleSummaryProjection(
+    val url: String,
+    val title: String,
+    val category: String?,
+    val heroImageUrl: String?,
+    val estimatedReadingTimeMinutes: Int,
+    val cachedAt: Long,
+    val lastAccessedAt: Long,
+    val page: Int,
+    val pageOrder: Int
+)
 
 @Dao
 interface ArticleDao {
@@ -13,16 +24,14 @@ interface ArticleDao {
     @Upsert
     suspend fun upsertSummaries(summaries: List<ArticleSummaryEntity>)
 
-    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
     @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE category = :category ORDER BY pageOrder ASC")
-    fun getSummariesByCategory(category: String): PagingSource<Int, ArticleSummaryEntity>
+    fun getSummariesByCategory(category: String): PagingSource<Int, ArticleSummaryProjection>
 
     @Query("SELECT url, cachedAt FROM article_summaries WHERE url IN (:urls)")
     suspend fun getSummaryTimestamps(urls: List<String>): List<UrlTimestamp>
 
-    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
     @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries ORDER BY pageOrder ASC")
-    fun getAllSummaries(): PagingSource<Int, ArticleSummaryEntity>
+    fun getAllSummaries(): PagingSource<Int, ArticleSummaryProjection>
 
     @Query("SELECT * FROM articles WHERE url = :url")
     suspend fun getArticle(url: String): ArticleEntity?
