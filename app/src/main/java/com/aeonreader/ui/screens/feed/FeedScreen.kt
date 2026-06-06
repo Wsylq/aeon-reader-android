@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -183,8 +182,7 @@ private fun ArticleList(
             modifier = modifier
         ) {
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
-                val summary = pagingItems[index]
-                if (summary != null) {
+                pagingItems[index]?.let { summary ->
                     val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
@@ -193,13 +191,6 @@ private fun ArticleList(
                         isBookmarked = isBookmarked,
                         onClick = onClick,
                         onBookmark = onBookmark
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .fillMaxWidth()
-                            .aspectRatio(0.7f)
                     )
                 }
             }
@@ -213,8 +204,7 @@ private fun ArticleList(
             modifier = modifier
         ) {
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
-                val summary = pagingItems[index]
-                if (summary != null) {
+                pagingItems[index]?.let { summary ->
                     val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
@@ -223,13 +213,6 @@ private fun ArticleList(
                         isBookmarked = isBookmarked,
                         onClick = onClick,
                         onBookmark = onBookmark
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 96.dp)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -283,7 +266,6 @@ private fun ArticleRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
-            .defaultMinSize(minHeight = 96.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
