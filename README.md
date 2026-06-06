@@ -61,5 +61,5 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [x] Reading themes (sepia, green-tinted paper)
 - [x] Fix read time of articles on feed page
 - [ ] Make an endpoint api like MAL for tracking and retrieving user's data of read articles and all.
-- [ ] Fix a major lag spike while opening and closing articles.
-- [ ] Release notes arent being styled/formatted and just display * * instead of bolding and all. 
+- [x] Fix a major lag spike while opening and closing articles.
+- [x] Release notes arent being styled/formatted and just display * * instead of bolding and all. 
