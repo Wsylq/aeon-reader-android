@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -59,11 +60,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
@@ -76,6 +77,7 @@ import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @Composable
 fun FeedScreen(
@@ -197,7 +199,7 @@ private fun ArticleList(
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { summary ->
                     val swipeLeft = index % 2 == 0
-                    val isBookmarked by remember { derivedStateOf { bookmarksState.value.contains(summary.url) } }
+                    val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                     SwipeableFeedItem(
@@ -221,7 +223,7 @@ private fun ArticleList(
         ) {
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { summary ->
-                    val isBookmarked by remember { derivedStateOf { bookmarksState.value.contains(summary.url) } }
+                    val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                     SwipeableFeedItem(
@@ -442,7 +444,7 @@ private fun SwipeableFeedItem(
     Box(modifier = Modifier.clipToBounds()) {
         Box(
             modifier = Modifier
-                .graphicsLayer { translationX = dragOffset.floatValue }
+                .offset { IntOffset(dragOffset.floatValue.roundToInt(), 0) }
                 .draggable(
                     orientation = Orientation.Horizontal,
                     state = dragState,

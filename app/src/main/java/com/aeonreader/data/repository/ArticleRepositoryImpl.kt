@@ -21,7 +21,6 @@ import com.aeonreader.domain.Article
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -41,7 +40,7 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> {
         return Pager(
-            config = PagingConfig(pageSize = 20, initialLoadSize = 20, prefetchDistance = 8, enablePlaceholders = false),
+            config = PagingConfig(pageSize = 20, initialLoadSize = 40, prefetchDistance = 15, enablePlaceholders = false),
             remoteMediator = ArticleRemoteMediator(
                 category = category,
                 scraper = scraper,
@@ -55,7 +54,7 @@ class ArticleRepositoryImpl @Inject constructor(
                     articleDao.getAllSummaries()
                 }
             }
-        ).flow.flowOn(Dispatchers.IO)
+        ).flow
     }
 
     override suspend fun getArticle(url: String): Result<Article> {
