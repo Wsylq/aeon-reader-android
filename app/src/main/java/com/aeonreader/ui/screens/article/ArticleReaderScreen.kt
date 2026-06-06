@@ -437,17 +437,27 @@ private fun ArticleReaderContent(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
+                        article.author?.let {
+                            Text(
+                                text = "By $it",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textDim
+                            )
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            article.author?.let {
-                                Text(text = "By $it", style = MaterialTheme.typography.bodyMedium, color = colors.textDim)
-                            }
                             article.publicationDate?.let {
-                                if (article.author != null) {
-                                    Text(text = " · ", color = colors.textDim)
-                                }
-                                Text(text = it.toString(), style = MaterialTheme.typography.bodyMedium, color = colors.textDim)
+                                Text(
+                                    text = it.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textDim
+                                )
+                                Text(text = " · ", color = colors.textDim)
                             }
-                            Text(text = " · ${ceil((article.wordCount / 200.0)).toInt()} min read", style = MaterialTheme.typography.bodyMedium, color = colors.textDim)
+                            Text(
+                                text = "${ceil((article.wordCount / 200.0)).toInt()} min read",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textDim
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(2.dp))
