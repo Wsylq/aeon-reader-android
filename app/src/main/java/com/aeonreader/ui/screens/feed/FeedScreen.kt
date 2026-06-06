@@ -305,7 +305,7 @@ private fun ArticleRow(
                 Icon(
                     imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
                     contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -337,31 +337,34 @@ private fun ArticleGridCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Box {
-            Column {
-                if (summary.heroImageUrl != null) {
-                    val imageRequest = remember(summary.heroImageUrl, imageWidthPx) {
-                        ImageRequest.Builder(context)
-                            .data(summary.heroImageUrl)
-                            .size(imageWidthPx)
-                            .memoryCachePolicy(CachePolicy.ENABLED)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .crossfade(true)
-                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                            .build()
-                    }
-                    AsyncImage(
-                        model = imageRequest,
-                        contentDescription = summary.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(4f / 3f)
-                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+        Column {
+            if (summary.heroImageUrl != null) {
+                val imageRequest = remember(summary.heroImageUrl, imageWidthPx) {
+                    ImageRequest.Builder(context)
+                        .data(summary.heroImageUrl)
+                        .size(imageWidthPx)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .crossfade(true)
+                        .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                        .build()
                 }
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = summary.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(4f / 3f)
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
-                Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = summary.title,
                         style = MaterialTheme.typography.titleSmall,
@@ -374,17 +377,14 @@ private fun ArticleGridCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
 
-            IconButton(
-                onClick = onBookmark,
-                modifier = Modifier.align(Alignment.TopEnd)
-            ) {
-                Icon(
-                    imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
-                    contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
+                IconButton(onClick = onBookmark) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
