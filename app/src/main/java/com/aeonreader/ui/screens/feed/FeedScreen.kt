@@ -182,7 +182,8 @@ private fun ArticleList(
             modifier = modifier
         ) {
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
-                pagingItems[index]?.let { summary ->
+                val summary = pagingItems[index]
+                if (summary != null) {
                     val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
@@ -191,6 +192,13 @@ private fun ArticleList(
                         isBookmarked = isBookmarked,
                         onClick = onClick,
                         onBookmark = onBookmark
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .fillMaxWidth()
+                            .aspectRatio(0.7f)
                     )
                 }
             }
@@ -204,7 +212,8 @@ private fun ArticleList(
             modifier = modifier
         ) {
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
-                pagingItems[index]?.let { summary ->
+                val summary = pagingItems[index]
+                if (summary != null) {
                     val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
@@ -213,6 +222,13 @@ private fun ArticleList(
                         isBookmarked = isBookmarked,
                         onClick = onClick,
                         onBookmark = onBookmark
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(88.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }

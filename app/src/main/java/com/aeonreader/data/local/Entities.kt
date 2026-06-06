@@ -14,8 +14,8 @@ data class UrlTimestamp(
 @Entity(
     tableName = "article_summaries",
     indices = [
-        Index(value = ["pageOrder"], orders = [Index.Order.ASC]),
-        Index(value = ["category"])
+        Index(value = ["category", "pageOrder"]),
+        Index(value = ["pageOrder"])
     ]
 )
 data class ArticleSummaryEntity(
