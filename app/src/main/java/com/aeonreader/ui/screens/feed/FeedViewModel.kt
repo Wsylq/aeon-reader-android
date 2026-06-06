@@ -12,7 +12,6 @@ import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,8 +118,7 @@ class FeedViewModel @Inject constructor(
             if (category == "all") null else category
         ).map { pagingData ->
             pagingData.map { it.toArticleSummary() }
-        }.flowOn(Dispatchers.Default)
-        .cachedIn(viewModelScope)
+        }.cachedIn(viewModelScope)
 
         combineJob?.cancel()
         combineJob = viewModelScope.launch {

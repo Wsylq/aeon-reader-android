@@ -194,15 +194,18 @@ private fun ArticleList(
             columns = GridCells.Fixed(2),
             modifier = modifier
         ) {
-            items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
+            items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { summary ->
                     val swipeLeft = index % 2 == 0
+                    val isBookmarked by remember { derivedStateOf { bookmarksState.value.contains(summary.url) } }
+                    val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
+                    val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                     SwipeableFeedItem(
                         summary = summary,
-                        bookmarksState = bookmarksState,
+                        isBookmarked = isBookmarked,
                         swipeDirection = if (swipeLeft) 0 else 1,
-                        onClick = { onArticleClick(summary.url) },
-                        onBookmark = { onToggleBookmark(summary) },
+                        onClick = onClick,
+                        onBookmark = onBookmark,
                         content = { ArticleGridCard(summary = summary) }
                     )
                 }
@@ -216,14 +219,17 @@ private fun ArticleList(
         LazyColumn(
             modifier = modifier
         ) {
-            items(pagingItems.itemCount, key = { index -> pagingItems.peek(index)?.url ?: "article_$index" }, contentType = { _ -> "article" }) { index ->
+            items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { summary ->
+                    val isBookmarked by remember { derivedStateOf { bookmarksState.value.contains(summary.url) } }
+                    val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
+                    val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
                     SwipeableFeedItem(
                         summary = summary,
-                        bookmarksState = bookmarksState,
+                        isBookmarked = isBookmarked,
                         swipeDirection = 1,
-                        onClick = { onArticleClick(summary.url) },
-                        onBookmark = { onToggleBookmark(summary) },
+                        onClick = onClick,
+                        onBookmark = onBookmark,
                         content = { ArticleRow(summary = summary) }
                     )
                 }
@@ -334,7 +340,7 @@ private fun ArticleGridCard(
                     .size(imageWidthPx)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(75)
+                    .crossfade(true)
                     .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                     .build()
             }
@@ -413,13 +419,12 @@ private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
 @Composable
 private fun SwipeableFeedItem(
     summary: ArticleSummary,
-    bookmarksState: State<Set<String>>,
+    isBookmarked: Boolean,
     swipeDirection: Int,
     onClick: () -> Unit,
     onBookmark: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val isItemBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
     val scope = rememberCoroutineScope()
     val dragOffset = remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
@@ -443,7 +448,7 @@ private fun SwipeableFeedItem(
                     state = dragState,
                     onDragStopped = {
                         scope.launch {
-                            if (abs(dragOffset.floatValue) >= thresholdPx && !isItemBookmarked) {
+                            if (abs(dragOffset.floatValue) >= thresholdPx && !isBookmarked) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onBookmark()
                             }
