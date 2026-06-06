@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -227,7 +228,7 @@ private fun ArticleList(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(88.dp)
+                            .defaultMinSize(minHeight = 96.dp)
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
@@ -282,6 +283,7 @@ private fun ArticleRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
+            .defaultMinSize(minHeight = 96.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
