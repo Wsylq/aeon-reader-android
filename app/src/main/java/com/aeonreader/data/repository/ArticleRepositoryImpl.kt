@@ -10,6 +10,7 @@ import androidx.paging.RemoteMediator
 import com.aeonreader.data.cache.ImageCache
 import com.aeonreader.data.local.ArticleDao
 import com.aeonreader.data.local.ArticleEntity
+import com.aeonreader.data.local.ArticlePagingSource
 import com.aeonreader.data.local.ArticleSummaryEntity
 import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.local.RemoteKeyDao
@@ -40,7 +41,7 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> {
         return Pager(
-            config = PagingConfig(pageSize = 20, initialLoadSize = 40, prefetchDistance = 15, enablePlaceholders = true),
+            config = PagingConfig(pageSize = 20, initialLoadSize = 40, prefetchDistance = 15, enablePlaceholders = false),
             remoteMediator = ArticleRemoteMediator(
                 category = category,
                 scraper = scraper,
@@ -48,11 +49,10 @@ class ArticleRepositoryImpl @Inject constructor(
                 remoteKeyDao = remoteKeyDao
             ),
             pagingSourceFactory = {
-                if (category != null && category != "all") {
-                    articleDao.getSummariesByCategory(category)
-                } else {
-                    articleDao.getAllSummaries()
-                }
+                ArticlePagingSource(
+                    articleDao = articleDao,
+                    category = if (category != null && category != "all") category else null
+                )
             }
         ).flow
     }
