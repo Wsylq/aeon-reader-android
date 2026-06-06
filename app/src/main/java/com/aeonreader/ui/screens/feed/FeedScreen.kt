@@ -1,13 +1,7 @@
 package com.aeonreader.ui.screens.feed
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,24 +42,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
@@ -75,9 +63,6 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 @Composable
 fun FeedScreen(
@@ -198,17 +183,14 @@ private fun ArticleList(
         ) {
             items(pagingItems.itemCount, key = { index -> "article_$index" }, contentType = { _ -> "article" }) { index ->
                 pagingItems[index]?.let { summary ->
-                    val swipeLeft = index % 2 == 0
                     val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
-                    SwipeableFeedItem(
+                    ArticleGridCard(
                         summary = summary,
                         isBookmarked = isBookmarked,
-                        swipeDirection = if (swipeLeft) 0 else 1,
                         onClick = onClick,
-                        onBookmark = onBookmark,
-                        content = { ArticleGridCard(summary = summary) }
+                        onBookmark = onBookmark
                     )
                 }
             }
@@ -226,13 +208,11 @@ private fun ArticleList(
                     val isBookmarked by remember(summary.url) { derivedStateOf { bookmarksState.value.contains(summary.url) } }
                     val onClick = remember(summary.url) { { onArticleClick(summary.url) } }
                     val onBookmark = remember(summary.url) { { onToggleBookmark(summary) } }
-                    SwipeableFeedItem(
+                    ArticleRow(
                         summary = summary,
                         isBookmarked = isBookmarked,
-                        swipeDirection = 1,
                         onClick = onClick,
-                        onBookmark = onBookmark,
-                        content = { ArticleRow(summary = summary) }
+                        onBookmark = onBookmark
                     )
                 }
             }
@@ -277,38 +257,55 @@ fun CategoryChipRow(
 @Composable
 private fun ArticleRow(
     summary: ArticleSummary,
+    isBookmarked: Boolean,
+    onClick: () -> Unit,
+    onBookmark: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = summary.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+        Row(
+            modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = summary.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (summary.category != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (summary.category != null) {
+                        Text(
+                            text = summary.category,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Text(
-                        text = summary.category,
+                        text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            IconButton(onClick = onBookmark) {
+                Icon(
+                    imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
+                    contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
+                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -318,6 +315,9 @@ private fun ArticleRow(
 @Composable
 private fun ArticleGridCard(
     summary: ArticleSummary,
+    isBookmarked: Boolean,
+    onClick: () -> Unit,
+    onBookmark: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -330,45 +330,62 @@ private fun ArticleGridCard(
     }
 
     Card(
-        modifier = modifier.padding(4.dp),
+        modifier = modifier
+            .padding(4.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        if (summary.heroImageUrl != null) {
-            val imageRequest = remember(summary.heroImageUrl, imageWidthPx) {
-                ImageRequest.Builder(context)
-                    .data(summary.heroImageUrl)
-                    .size(imageWidthPx)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(true)
-                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                    .build()
-            }
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = summary.title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                contentScale = ContentScale.Crop
-            )
-        }
+        Box {
+            Column {
+                if (summary.heroImageUrl != null) {
+                    val imageRequest = remember(summary.heroImageUrl, imageWidthPx) {
+                        ImageRequest.Builder(context)
+                            .data(summary.heroImageUrl)
+                            .size(imageWidthPx)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .crossfade(true)
+                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = summary.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4f / 3f)
+                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text(
-                text = summary.title,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(
+                        text = summary.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${maxOf(summary.estimatedReadingTimeMinutes, 5)} min",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onBookmark,
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                Icon(
+                    imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
+                    contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
+                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }
@@ -382,7 +399,10 @@ fun ArticleCard(
 ) {
     ArticleRow(
         summary = summary,
-        modifier = modifier.clickable(onClick = onClick)
+        isBookmarked = false,
+        onClick = onClick,
+        onBookmark = {},
+        modifier = modifier
     )
 }
 
@@ -415,71 +435,6 @@ private fun FeedFooter(loadState: LoadState, onRetry: () -> Unit) {
             }
         }
         else -> {}
-    }
-}
-
-@Composable
-private fun SwipeableFeedItem(
-    summary: ArticleSummary,
-    isBookmarked: Boolean,
-    swipeDirection: Int,
-    onClick: () -> Unit,
-    onBookmark: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    val scope = rememberCoroutineScope()
-    val dragOffset = remember { mutableFloatStateOf(0f) }
-    val density = LocalDensity.current
-    val thresholdPx = with(density) { 150.dp.toPx() }
-    val haptic = LocalHapticFeedback.current
-
-    val dragState = rememberDraggableState { delta ->
-        val next = dragOffset.floatValue + delta
-        dragOffset.floatValue = if (swipeDirection == 0) next.coerceIn(-thresholdPx * 1.3f, 0f)
-        else next.coerceIn(0f, thresholdPx * 1.3f)
-    }
-
-    val showStar by remember { derivedStateOf { abs(dragOffset.floatValue) > thresholdPx * 0.3f } }
-
-    Box(modifier = Modifier.clipToBounds()) {
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(dragOffset.floatValue.roundToInt(), 0) }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = dragState,
-                    onDragStopped = {
-                        scope.launch {
-                            if (abs(dragOffset.floatValue) >= thresholdPx && !isBookmarked) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onBookmark()
-                            }
-                            Animatable(dragOffset.floatValue).animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f)) {
-                                dragOffset.floatValue = this.value
-                            }
-                            dragOffset.floatValue = 0f
-                        }
-                    }
-                )
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick
-                )
-        ) {
-            content()
-            if (showStar) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Bookmark",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier
-                        .align(if (swipeDirection == 0) Alignment.CenterEnd else Alignment.CenterStart)
-                        .padding(horizontal = 24.dp)
-                        .size(32.dp)
-                )
-            }
-        }
     }
 }
 
