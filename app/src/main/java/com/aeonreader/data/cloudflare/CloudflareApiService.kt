@@ -9,6 +9,8 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Singleton
 class CloudflareApiService @Inject constructor() {
@@ -21,7 +23,7 @@ class CloudflareApiService @Inject constructor() {
 
     private val jsonMediaType = "application/json".toMediaType()
 
-    fun register(email: String, username: String, password: String): Result<Pair<String, UserInfo>> {
+    suspend fun register(email: String, username: String, password: String): Result<Pair<String, UserInfo>> {
         return post("${ApiConfig.baseUrl}/auth/register", JSONObject().apply {
             put("email", email)
             put("username", username)
@@ -29,21 +31,21 @@ class CloudflareApiService @Inject constructor() {
         })
     }
 
-    fun login(email: String, password: String): Result<Pair<String, UserInfo>> {
+    suspend fun login(email: String, password: String): Result<Pair<String, UserInfo>> {
         return post("${ApiConfig.baseUrl}/auth/login", JSONObject().apply {
             put("email", email)
             put("password", password)
         })
     }
 
-    fun getMe(token: String): Result<UserInfo> {
+    suspend fun getMe(token: String): Result<UserInfo> {
         return get("${ApiConfig.baseUrl}/auth/me", token) { json ->
             val user = json.getJSONObject("user")
             UserInfo(user.getInt("id"), user.getString("email"), user.getString("username"))
         }
     }
 
-    fun syncBookmarks(token: String, items: List<BookmarkPayload>): Result<SyncResult> {
+    suspend fun syncBookmarks(token: String, items: List<BookmarkPayload>): Result<SyncResult> {
         val body = JSONObject().apply {
             put("items", JSONArray().apply {
                 items.forEach { item ->
@@ -60,7 +62,7 @@ class CloudflareApiService @Inject constructor() {
         return postSync("${ApiConfig.baseUrl}/bookmarks/sync", body, token)
     }
 
-    fun syncProgress(token: String, items: List<ProgressPayload>): Result<SyncResult> {
+    suspend fun syncProgress(token: String, items: List<ProgressPayload>): Result<SyncResult> {
         val body = JSONObject().apply {
             put("items", JSONArray().apply {
                 items.forEach { item ->
@@ -76,7 +78,7 @@ class CloudflareApiService @Inject constructor() {
         return postSync("${ApiConfig.baseUrl}/progress/sync", body, token)
     }
 
-    fun syncHistory(token: String, items: List<HistoryPayload>): Result<SyncResult> {
+    suspend fun syncHistory(token: String, items: List<HistoryPayload>): Result<SyncResult> {
         val body = JSONObject().apply {
             put("items", JSONArray().apply {
                 items.forEach { item ->
@@ -94,28 +96,28 @@ class CloudflareApiService @Inject constructor() {
         return postSync("${ApiConfig.baseUrl}/history/sync", body, token)
     }
 
-    fun getBookmarks(token: String): Result<List<JSONObject>> {
+    suspend fun getBookmarks(token: String): Result<List<JSONObject>> {
         return get("${ApiConfig.baseUrl}/bookmarks", token) { json ->
             val items = json.getJSONArray("items")
             (0 until items.length()).map { items.getJSONObject(it) }
         }
     }
 
-    fun getProgress(token: String): Result<List<JSONObject>> {
+    suspend fun getProgress(token: String): Result<List<JSONObject>> {
         return get("${ApiConfig.baseUrl}/progress", token) { json ->
             val items = json.getJSONArray("items")
             (0 until items.length()).map { items.getJSONObject(it) }
         }
     }
 
-    fun getHistory(token: String): Result<List<JSONObject>> {
+    suspend fun getHistory(token: String): Result<List<JSONObject>> {
         return get("${ApiConfig.baseUrl}/history", token) { json ->
             val items = json.getJSONArray("items")
             (0 until items.length()).map { items.getJSONObject(it) }
         }
     }
 
-    fun getStats(token: String): Result<UserStats> {
+    suspend fun getStats(token: String): Result<UserStats> {
         return get("${ApiConfig.baseUrl}/user/stats", token) { json ->
             UserStats(
                 totalBookmarks = json.getInt("total_bookmarks"),
@@ -125,13 +127,13 @@ class CloudflareApiService @Inject constructor() {
         }
     }
 
-    private fun post(url: String, body: JSONObject, token: String? = null): Result<Pair<String, UserInfo>> {
+    private suspend fun post(url: String, body: JSONObject, token: String? = null): Result<Pair<String, UserInfo>> {
         return try {
             val requestBuilder = Request.Builder()
                 .url(url)
                 .post(body.toString().toRequestBody(jsonMediaType))
             token?.let { requestBuilder.header("Authorization", "Bearer $it") }
-            val response = client.newCall(requestBuilder.build()).execute()
+            val response = withContext(Dispatchers.IO) { client.newCall(requestBuilder.build()).execute() }
             val responseBody = response.body?.string() ?: ""
             if (!response.isSuccessful) {
                 val errorMsg = try { JSONObject(responseBody).optString("error", "Unknown error") } catch (_: Exception) { "Request failed" }
@@ -147,14 +149,14 @@ class CloudflareApiService @Inject constructor() {
         }
     }
 
-    private fun postSync(url: String, body: JSONObject, token: String): Result<SyncResult> {
+    private suspend fun postSync(url: String, body: JSONObject, token: String): Result<SyncResult> {
         return try {
             val request = Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer $token")
                 .post(body.toString().toRequestBody(jsonMediaType))
                 .build()
-            val response = client.newCall(request).execute()
+            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
             val responseBody = response.body?.string() ?: ""
             if (!response.isSuccessful) {
                 val errorMsg = try { JSONObject(responseBody).optString("error", "Unknown error") } catch (_: Exception) { "Request failed" }
@@ -167,14 +169,14 @@ class CloudflareApiService @Inject constructor() {
         }
     }
 
-    private fun <T> get(url: String, token: String, parser: (JSONObject) -> T): Result<T> {
+    private suspend fun <T> get(url: String, token: String, parser: (JSONObject) -> T): Result<T> {
         return try {
             val request = Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer $token")
                 .get()
                 .build()
-            val response = client.newCall(request).execute()
+            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
             val responseBody = response.body?.string() ?: ""
             if (!response.isSuccessful) {
                 val errorMsg = try { JSONObject(responseBody).optString("error", "Unknown error") } catch (_: Exception) { "Request failed" }
