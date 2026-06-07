@@ -60,6 +60,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val prefs by viewModel.readingPrefs.collectAsState()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+    val userName by viewModel.userDisplayName.collectAsState()
 
     Scaffold(
         topBar = {
@@ -115,7 +117,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Sign in to sync your data",
+                            text = if (isLoggedIn) "Signed in as $userName" else "Sign in to sync your data",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -113,6 +113,18 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         }
     }
 
+    override val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[AUTH_TOKEN] != null
+    }
+
+    override val userEmail: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[USER_EMAIL]
+    }
+
+    override val userName: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[USER_NAME]
+    }
+
     override suspend fun getAuthToken(): String? {
         return context.dataStore.data.first()[AUTH_TOKEN]
     }

@@ -19,6 +19,12 @@ class SettingsViewModel @Inject constructor(
     val readingPrefs: StateFlow<ReadingPreferences> = userPreferencesRepository.readingPreferences
         .stateIn(viewModelScope, SharingStarted.Eagerly, ReadingPreferences())
 
+    val isLoggedIn: StateFlow<Boolean> = userPreferencesRepository.isLoggedIn
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val userDisplayName: StateFlow<String?> = userPreferencesRepository.userName
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     fun setReadingPrefs(prefs: ReadingPreferences) {
         viewModelScope.launch {
             userPreferencesRepository.setReadingPreferences(prefs)

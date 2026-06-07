@@ -17,6 +17,9 @@ interface UserPreferencesRepository {
     suspend fun setReadingPreferences(prefs: ReadingPreferences)
 
     // Auth
+    val isLoggedIn: Flow<Boolean>
+    val userEmail: Flow<String?>
+    val userName: Flow<String?>
     suspend fun getAuthToken(): String?
     suspend fun setAuthToken(token: String)
     suspend fun getUserId(): Int?
