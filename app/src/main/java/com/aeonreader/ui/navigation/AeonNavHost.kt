@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.aeonreader.ui.screens.account.AccountScreen
 import com.aeonreader.ui.screens.article.ArticleReaderScreen
 import com.aeonreader.ui.screens.bookmarks.BookmarksScreen
 import com.aeonreader.ui.screens.feed.FeedScreen
@@ -54,7 +55,8 @@ fun AeonNavHost(
     val currentDestination = navBackStackEntry?.destination
     val isArticleReader = currentDestination?.route?.startsWith("article") == true
     val isSettings = currentDestination?.route == Screen.Settings.route
-    val showBottomNav = !isArticleReader && !isSettings
+    val isAccount = currentDestination?.route == Screen.Account.route
+    val showBottomNav = !isArticleReader && !isSettings && !isAccount
 
     Scaffold(
         bottomBar = {
@@ -125,6 +127,13 @@ fun AeonNavHost(
 
             composable(Screen.Settings.route) {
                 SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onAccountClick = { navController.navigate(Screen.Account.route) }
+                )
+            }
+
+            composable(Screen.Account.route) {
+                AccountScreen(
                     onBack = { navController.popBackStack() }
                 )
             }

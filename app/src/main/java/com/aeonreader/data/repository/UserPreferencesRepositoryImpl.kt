@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.aeonreader.data.cloudflare.UserInfo
 import com.aeonreader.domain.FeedLayout
 import com.aeonreader.domain.ReadingFont
 import com.aeonreader.domain.ReadingPreferences
@@ -13,6 +14,7 @@ import com.aeonreader.domain.ReadingTheme
 import com.aeonreader.domain.ThemeOverride
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,6 +36,10 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         private val READING_MOTION_BLUR = booleanPreferencesKey("reading_motion_blur")
         private val READING_SHOW_RELATED = booleanPreferencesKey("reading_show_related")
         private val FEED_LAYOUT = stringPreferencesKey("feed_layout")
+        private val AUTH_TOKEN = stringPreferencesKey("auth_token")
+        private val USER_ID = intPreferencesKey("user_id")
+        private val USER_EMAIL = stringPreferencesKey("user_email")
+        private val USER_NAME = stringPreferencesKey("user_name")
     }
 
     override val selectedCategory: Flow<String> = context.dataStore.data.map { prefs ->
@@ -104,6 +110,43 @@ class UserPreferencesRepositoryImpl @Inject constructor(
             stored[READING_THEME] = prefs.theme.name
             stored[READING_MOTION_BLUR] = prefs.isMotionBlurEnabled
             stored[READING_SHOW_RELATED] = prefs.showRelatedArticles
+        }
+    }
+
+    override suspend fun getAuthToken(): String? {
+        return context.dataStore.data.first()[AUTH_TOKEN]
+    }
+
+    override suspend fun setAuthToken(token: String) {
+        context.dataStore.edit { it[AUTH_TOKEN] = token }
+    }
+
+    override suspend fun getUserId(): Int? {
+        return context.dataStore.data.first()[USER_ID]
+    }
+
+    override suspend fun getUserEmail(): String? {
+        return context.dataStore.data.first()[USER_EMAIL]
+    }
+
+    override suspend fun getUserName(): String? {
+        return context.dataStore.data.first()[USER_NAME]
+    }
+
+    override suspend fun setAccountInfo(info: UserInfo) {
+        context.dataStore.edit { stored ->
+            stored[USER_ID] = info.id
+            stored[USER_EMAIL] = info.email
+            stored[USER_NAME] = info.username
+        }
+    }
+
+    override suspend fun clearAuth() {
+        context.dataStore.edit { stored ->
+            stored.remove(AUTH_TOKEN)
+            stored.remove(USER_ID)
+            stored.remove(USER_EMAIL)
+            stored.remove(USER_NAME)
         }
     }
 }

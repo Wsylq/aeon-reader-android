@@ -56,6 +56,12 @@ interface ArticleDao {
     @Query("SELECT url FROM articles")
     fun getCachedArticleUrls(): Flow<List<String>>
 
+    @Query("SELECT url FROM articles")
+    suspend fun getAllArticleUrls(): List<String>
+
+    @Query("SELECT * FROM articles")
+    suspend fun getAllArticles(): List<ArticleEntity>
+
     @Query("SELECT * FROM word_definitions WHERE word = :word")
     suspend fun getWordDefinition(word: String): WordDefinitionEntity?
 

@@ -16,6 +16,8 @@ sealed class Screen(val route: String, val title: String = "") {
 
     data object Settings : Screen("settings", "Settings")
 
+    data object Account : Screen("account", "Account")
+
     data object ArticleReader : Screen("article/{url}", "Article") {
         val arguments: List<NamedNavArgument> = listOf(
             navArgument("url") { type = NavType.StringType }

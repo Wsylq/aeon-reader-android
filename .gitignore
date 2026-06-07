@@ -12,3 +12,6 @@ build/
 .cxx
 .kiro/
 scrape-test/
+workers/api/.dev.vars
+workers/api/node_modules/
+workers/api/dist/

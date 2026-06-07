@@ -19,3 +19,16 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep OkHttp
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# Keep JSON
+-keep class org.json.** { *; }
+
+# Keep cloudflare API models
+-keep class com.aeonreader.data.cloudflare.** { *; }
+-keep class com.aeonreader.data.repository.AuthRepositoryImpl { *; }
+-keep class com.aeonreader.data.repository.CloudSyncRepositoryImpl { *; }

@@ -6,8 +6,12 @@ import com.aeonreader.data.network.AeonScraper
 import com.aeonreader.data.network.AeonScraperImpl
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.ArticleRepositoryImpl
+import com.aeonreader.data.repository.AuthRepository
+import com.aeonreader.data.repository.AuthRepositoryImpl
 import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.BookmarkRepositoryImpl
+import com.aeonreader.data.repository.CloudSyncRepository
+import com.aeonreader.data.repository.CloudSyncRepositoryImpl
 import com.aeonreader.data.repository.ReadingProgressRepository
 import com.aeonreader.data.repository.ReadingProgressRepositoryImpl
 import com.aeonreader.data.repository.UserPreferencesRepository
@@ -45,4 +49,12 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindUserPreferencesRepository(impl: UserPreferencesRepositoryImpl): UserPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCloudSyncRepository(impl: CloudSyncRepositoryImpl): CloudSyncRepository
 }

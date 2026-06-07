@@ -1,0 +1,8 @@
+name = "aeon-reader-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-09"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aeon-reader-db"
+database_id = "345e0f42-6eb4-42c5-81a1-6be52c0b9389"
