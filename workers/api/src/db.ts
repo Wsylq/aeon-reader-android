@@ -2,12 +2,15 @@ import { Bindings, User, Bookmark, ReadingProgress, ReadingHistory } from './typ
 
 function users(db: D1Database) {
   return {
-    async create(email: string, username: string, passwordHash: string): Promise<User> {
-      const result = await db
-        .prepare('INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?) RETURNING id, email, username, created_at')
+    async create(email: string, username: string, passwordHash: string): Promise<User | null> {
+      await db
+        .prepare('INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)')
         .bind(email, username, passwordHash)
-        .first<User>()
-      return result!
+        .run()
+      return db
+        .prepare('SELECT id, email, username, created_at FROM users WHERE email = ?')
+        .bind(email)
+        .first<User | null>()
     },
 
     async findByEmail(email: string): Promise<(User & { password_hash: string }) | null> {

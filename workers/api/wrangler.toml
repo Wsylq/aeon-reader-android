@@ -1,4 +1,4 @@
-name = "aeon-reader-api"
+﻿name = "aeon-reader-api"
 main = "src/index.ts"
 compatibility_date = "2025-01-09"
 

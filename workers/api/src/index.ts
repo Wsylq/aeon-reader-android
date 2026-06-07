@@ -11,6 +11,10 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('/*', cors())
 
+app.onError((err, c) => {
+  return c.json({ error: err.message }, 500)
+})
+
 app.route('/api/auth', auth)
 app.route('/api/bookmarks', bookmarks)
 app.route('/api/progress', progress)
