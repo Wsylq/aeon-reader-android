@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "aeon-reader-api",
   "version": "1.0.0",
   "private": true,
@@ -9,11 +9,12 @@
     "db:create": "wrangler d1 create aeon-reader-db"
   },
   "dependencies": {
+    "@hono/swagger-ui": "^0.6.1",
     "hono": "^4.7.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",
-    "wrangler": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
   }
 }

@@ -61,6 +61,7 @@ export interface JWTPayload {
   sub: number
   email: string
   username: string
+  [key: string]: unknown
 }
 
 export type Bindings = {
