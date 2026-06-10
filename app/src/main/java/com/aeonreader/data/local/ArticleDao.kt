@@ -17,23 +17,46 @@ data class ArticleSummaryProjection(
     val pageOrder: Int
 )
 
+data class ArticleSummaryTitleProjection(
+    val url: String,
+    val title: String,
+    val category: String?
+)
+
+data class RelevanceScoreProjection(
+    val url: String,
+    val relevanceScore: Float
+)
+
 @Dao
 interface ArticleDao {
 
     @Upsert
     suspend fun upsertSummaries(summaries: List<ArticleSummaryEntity>)
 
-    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE category = :category AND pageOrder > :afterPageOrder ORDER BY readCount ASC, pageOrder ASC LIMIT :limit")
+    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE category = :category AND pageOrder > :afterPageOrder ORDER BY relevanceScore DESC, readCount ASC, pageOrder ASC LIMIT :limit")
     suspend fun getSummariesByCategoryAfter(category: String, afterPageOrder: Int, limit: Int): List<ArticleSummaryProjection>
 
     @Query("SELECT url, cachedAt FROM article_summaries WHERE url IN (:urls)")
     suspend fun getSummaryTimestamps(urls: List<String>): List<UrlTimestamp>
 
-    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE pageOrder > :afterPageOrder ORDER BY readCount ASC, pageOrder ASC LIMIT :limit")
+    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE pageOrder > :afterPageOrder ORDER BY relevanceScore DESC, readCount ASC, pageOrder ASC LIMIT :limit")
     suspend fun getAllSummariesAfter(afterPageOrder: Int, limit: Int): List<ArticleSummaryProjection>
 
     @Query("UPDATE article_summaries SET readCount = readCount + 1 WHERE url = :url")
     suspend fun incrementReadCount(url: String)
+
+    @Query("UPDATE article_summaries SET relevanceScore = :score WHERE url = :url")
+    suspend fun updateRelevanceScore(url: String, score: Float)
+
+    @Query("SELECT url, title, category FROM article_summaries")
+    suspend fun getAllSummaryTitles(): List<ArticleSummaryTitleProjection>
+
+    @Query("SELECT url, relevanceScore FROM article_summaries")
+    suspend fun getAllRelevanceScores(): List<RelevanceScoreProjection>
+
+    @Query("UPDATE article_summaries SET relevanceScore = :score WHERE url IN (:urls)")
+    suspend fun batchUpdateRelevanceScore(urls: List<String>, score: Float)
 
     @Query("SELECT * FROM articles WHERE url = :url")
     suspend fun getArticle(url: String): ArticleEntity?

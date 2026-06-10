@@ -8,6 +8,7 @@ import com.aeonreader.data.local.HighlightedWordEntity
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
 import com.aeonreader.data.repository.ReadingProgressRepository
+import com.aeonreader.data.repository.UserInterestRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.data.word.WordService
 import com.aeonreader.domain.Article
@@ -45,6 +46,7 @@ class ArticleViewModel @Inject constructor(
     private val bookmarkRepository: BookmarkRepository,
     private val readingProgressRepository: ReadingProgressRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val userInterestRepository: UserInterestRepository,
     private val wordService: WordService,
     private val articleDao: ArticleDao,
     val imageCache: ImageCache
@@ -77,6 +79,7 @@ class ArticleViewModel @Inject constructor(
             articleRepository.getArticle(url).fold(
                 onSuccess = { article ->
                     articleRepository.incrementReadCount(url)
+                    userInterestRepository.updateOnRead(article.category, article.title)
                     val progress = readingProgressRepository.getProgress(url)
                     val isBookmarked = bookmarkRepository.observeBookmarkState(url).first()
                     _uiState.value = ArticleUiState.Success(

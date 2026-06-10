@@ -36,7 +36,8 @@ class ArticleRepositoryImpl @Inject constructor(
     private val articleDao: ArticleDao,
     private val remoteKeyDao: RemoteKeyDao,
     private val networkMonitor: NetworkMonitor,
-    private val imageCache: ImageCache
+    private val imageCache: ImageCache,
+    private val userInterestRepository: UserInterestRepository
 ) : ArticleRepository {
 
     override fun getFeedPager(category: String?): Flow<PagingData<ArticleSummaryProjection>> {
@@ -46,7 +47,8 @@ class ArticleRepositoryImpl @Inject constructor(
                 category = category,
                 scraper = scraper,
                 articleDao = articleDao,
-                remoteKeyDao = remoteKeyDao
+                remoteKeyDao = remoteKeyDao,
+                userInterestRepository = userInterestRepository
             ),
             pagingSourceFactory = {
                 ArticlePagingSource(
@@ -164,7 +166,8 @@ class ArticleRemoteMediator(
     private val category: String?,
     private val scraper: AeonScraper,
     private val articleDao: ArticleDao,
-    private val remoteKeyDao: RemoteKeyDao
+    private val remoteKeyDao: RemoteKeyDao,
+    private val userInterestRepository: UserInterestRepository
 ) : RemoteMediator<Int, ArticleSummaryProjection>() {
 
     override suspend fun initialize(): RemoteMediator.InitializeAction {
@@ -212,6 +215,7 @@ class ArticleRemoteMediator(
             val entities = summaries
                 .filter { it.url !in existingUrls }
                 .mapIndexed { index, summary ->
+                    val score = userInterestRepository.getScore(summary.category, summary.title)
                     ArticleSummaryEntity(
                         url = summary.url,
                         title = summary.title,
@@ -223,7 +227,8 @@ class ArticleRemoteMediator(
                         cachedAt = now,
                         lastAccessedAt = now,
                         page = page,
-                        pageOrder = (page - 1) * state.config.pageSize + index
+                        pageOrder = (page - 1) * state.config.pageSize + index,
+                        relevanceScore = score
                     )
                 }
 

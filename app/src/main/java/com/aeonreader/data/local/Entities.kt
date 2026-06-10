@@ -31,7 +31,8 @@ data class ArticleSummaryEntity(
     val lastAccessedAt: Long,
     val page: Int,
     val pageOrder: Int,
-    val readCount: Int = 0
+    val readCount: Int = 0,
+    val relevanceScore: Float = 1.0f
 )
 
 @Entity(tableName = "articles")

@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         WordDefinitionEntity::class,
         HighlightedWordEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AeonDatabase : RoomDatabase() {
