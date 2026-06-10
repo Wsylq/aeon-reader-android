@@ -2,15 +2,23 @@ package com.aeonreader.ui.screens.account
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeonreader.data.cloudflare.CloudflareApiService
 import com.aeonreader.data.repository.AuthRepository
 import com.aeonreader.data.repository.CloudSyncRepository
 import com.aeonreader.data.repository.SyncAllResult
+import com.aeonreader.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class ReadingStats(
+    val bookmarkCount: Int = 0,
+    val readCount: Int = 0,
+    val progressCount: Int = 0
+)
 
 sealed class AccountUiState {
     data object Loading : AccountUiState()
@@ -30,14 +38,17 @@ sealed class AccountUiState {
         val username: String,
         val isSyncing: Boolean = false,
         val syncResult: String? = null,
-        val error: String? = null
+        val error: String? = null,
+        val stats: ReadingStats = ReadingStats()
     ) : AccountUiState()
 }
 
 @HiltViewModel
 class AccountViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val syncRepository: CloudSyncRepository
+    private val syncRepository: CloudSyncRepository,
+    private val api: CloudflareApiService,
+    private val userPreferences: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AccountUiState>(AccountUiState.Loading)
@@ -57,12 +68,27 @@ class AccountViewModel @Inject constructor(
                         email = account.email,
                         username = account.username
                     )
+                    fetchStats()
                 } else {
                     _uiState.value = AccountUiState.LoggedOut()
                 }
             } else {
                 _uiState.value = AccountUiState.LoggedOut()
             }
+        }
+    }
+
+    private suspend fun fetchStats() {
+        val token = userPreferences.getAuthToken() ?: return
+        api.getStats(token).onSuccess { stats ->
+            val current = _uiState.value as? AccountUiState.LoggedIn ?: return
+            _uiState.value = current.copy(
+                stats = ReadingStats(
+                    bookmarkCount = stats.totalBookmarks,
+                    readCount = stats.totalRead,
+                    progressCount = stats.totalProgressSaved
+                )
+            )
         }
     }
 
@@ -121,6 +147,7 @@ class AccountViewModel @Inject constructor(
                         email = account.email,
                         username = account.username
                     )
+                    fetchStats()
                 },
                 onFailure = { e ->
                     val current = _uiState.value as? AccountUiState.LoggedOut ?: return@launch
@@ -153,6 +180,7 @@ class AccountViewModel @Inject constructor(
                         email = account.email,
                         username = account.username
                     )
+                    fetchStats()
                 },
                 onFailure = { e ->
                     val current = _uiState.value as? AccountUiState.LoggedOut ?: return@launch
@@ -180,6 +208,7 @@ class AccountViewModel @Inject constructor(
                         isSyncing = false,
                         syncResult = "Bookmarks: ${result.bookmarksSynced}, Progress: ${result.progressSynced}, History: ${result.historySynced}"
                     )
+                    fetchStats()
                 },
                 onFailure = { e ->
                     val current = _uiState.value as? AccountUiState.LoggedIn ?: return@launch

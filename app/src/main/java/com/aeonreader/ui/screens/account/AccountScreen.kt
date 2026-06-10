@@ -1,5 +1,6 @@
 package com.aeonreader.ui.screens.account
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,11 +40,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +103,8 @@ fun AccountScreen(
                     ProfileView(
                         state = state as AccountUiState.LoggedIn,
                         onSyncAll = viewModel::syncAll,
-                        onLogout = viewModel::logout
+                        onLogout = viewModel::logout,
+                        stats = (state as AccountUiState.LoggedIn).stats
                     )
                 }
             }
@@ -224,7 +233,8 @@ private fun LoginForm(
 private fun ProfileView(
     state: AccountUiState.LoggedIn,
     onSyncAll: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    stats: ReadingStats = ReadingStats()
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -256,7 +266,60 @@ private fun ProfileView(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Reading Stats",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        PieChart(
+            slices = listOf(
+                PieSlice("Bookmarked", stats.bookmarkCount, BookmarksColor),
+                PieSlice("Completed", stats.readCount, CompletedColor),
+                PieSlice("In Progress", stats.progressCount, InProgressColor),
+            ),
+            modifier = Modifier.size(200.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            listOf(
+                Triple("Bookmarked", stats.bookmarkCount, BookmarksColor),
+                Triple("Completed", stats.readCount, CompletedColor),
+                Triple("In Progress", stats.progressCount, InProgressColor),
+            ).forEach { (label, count, color) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .drawBehind { drawCircle(color) }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = count.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = onSyncAll,
@@ -312,6 +375,73 @@ private fun ProfileView(
             shape = RoundedCornerShape(12.dp)
         ) {
             Text("Logout", color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+private val BookmarksColor = Color(0xFFFF6B35)
+private val CompletedColor = Color(0xFF4CAF50)
+private val InProgressColor = Color(0xFF2196F3)
+
+private data class PieSlice(
+    val label: String,
+    val value: Int,
+    val color: Color
+)
+
+@Composable
+private fun PieChart(
+    slices: List<PieSlice>,
+    modifier: Modifier = Modifier
+) {
+    val total = slices.sumOf { it.value }
+
+    if (total == 0) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No data yet",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = size.minDimension * 0.25f
+            var startAngle = -90f
+            slices.forEach { slice ->
+                val sweep = (slice.value.toFloat() / total) * 360f
+                drawArc(
+                    color = slice.color,
+                    startAngle = startAngle,
+                    sweepAngle = sweep,
+                    useCenter = false,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
+                    topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
+                    size = androidx.compose.ui.geometry.Size(
+                        size.width - strokeWidth,
+                        size.height - strokeWidth
+                    )
+                )
+                startAngle += sweep
+            }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = total.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "total",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
