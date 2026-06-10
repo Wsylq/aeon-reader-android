@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -33,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,6 +55,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,6 +65,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.aeonreader.data.repository.KeepReadingItem
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
 
@@ -73,6 +78,7 @@ fun FeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val feedLayout by viewModel.feedLayout.collectAsState()
+    val keepReadingItems by viewModel.keepReadingItems.collectAsState()
 
     when (val state = uiState) {
         is FeedUiState.Loading -> {
@@ -100,6 +106,7 @@ fun FeedScreen(
                 state = state,
                 feedLayout = feedLayout,
                 bookmarkedUrls = viewModel.bookmarkedUrls,
+                keepReadingItems = keepReadingItems,
                 onArticleClick = onArticleClick,
                 onSettingsClick = onSettingsClick,
                 onCategorySelect = { viewModel.selectCategory(it) },
@@ -116,6 +123,7 @@ private fun FeedContent(
     state: FeedUiState.Success,
     feedLayout: FeedLayout,
     bookmarkedUrls: StateFlow<Set<String>>,
+    keepReadingItems: List<KeepReadingItem>,
     onArticleClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onCategorySelect: (String) -> Unit,
@@ -152,6 +160,14 @@ private fun FeedContent(
                 Icon(Icons.Default.Settings, contentDescription = "Settings")
             }
         }
+        }
+
+        if (keepReadingItems.isNotEmpty()) {
+            KeepReadingRow(
+                items = keepReadingItems,
+                onArticleClick = onArticleClick,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
         }
 
         ArticleList(
@@ -384,6 +400,84 @@ private fun ArticleGridCard(
                         contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
                         tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeepReadingRow(
+    items: List<KeepReadingItem>,
+    onArticleClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(horizontal = 12.dp)) {
+        Text(
+            text = "Keep Reading",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        )
+        LazyRow(
+            contentPadding = PaddingValues(end = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(items, key = { it.url }) { item ->
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                Card(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .clickable { onArticleClick(item.url) },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column {
+                        if (item.heroImageUrl != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(ctx)
+                                    .data(item.heroImageUrl)
+                                    .size(400)
+                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = item.title,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { item.progressPercent / 100f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${item.progressPercent.toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -15,7 +15,8 @@ data class UrlTimestamp(
     tableName = "article_summaries",
     indices = [
         Index(value = ["category", "pageOrder"]),
-        Index(value = ["pageOrder"])
+        Index(value = ["pageOrder"]),
+        Index(value = ["readCount"])
     ]
 )
 data class ArticleSummaryEntity(
@@ -29,7 +30,8 @@ data class ArticleSummaryEntity(
     val cachedAt: Long,
     val lastAccessedAt: Long,
     val page: Int,
-    val pageOrder: Int
+    val pageOrder: Int,
+    val readCount: Int = 0
 )
 
 @Entity(tableName = "articles")

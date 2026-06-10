@@ -23,14 +23,17 @@ interface ArticleDao {
     @Upsert
     suspend fun upsertSummaries(summaries: List<ArticleSummaryEntity>)
 
-    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE category = :category AND pageOrder > :afterPageOrder ORDER BY pageOrder ASC LIMIT :limit")
+    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE category = :category AND pageOrder > :afterPageOrder ORDER BY readCount ASC, pageOrder ASC LIMIT :limit")
     suspend fun getSummariesByCategoryAfter(category: String, afterPageOrder: Int, limit: Int): List<ArticleSummaryProjection>
 
     @Query("SELECT url, cachedAt FROM article_summaries WHERE url IN (:urls)")
     suspend fun getSummaryTimestamps(urls: List<String>): List<UrlTimestamp>
 
-    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE pageOrder > :afterPageOrder ORDER BY pageOrder ASC LIMIT :limit")
+    @Query("SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder FROM article_summaries WHERE pageOrder > :afterPageOrder ORDER BY readCount ASC, pageOrder ASC LIMIT :limit")
     suspend fun getAllSummariesAfter(afterPageOrder: Int, limit: Int): List<ArticleSummaryProjection>
+
+    @Query("UPDATE article_summaries SET readCount = readCount + 1 WHERE url = :url")
+    suspend fun incrementReadCount(url: String)
 
     @Query("SELECT * FROM articles WHERE url = :url")
     suspend fun getArticle(url: String): ArticleEntity?

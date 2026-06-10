@@ -12,4 +12,5 @@ interface ArticleRepository {
     suspend fun getCategories(): Result<List<String>>
     fun observeNetworkStatus(): Flow<Boolean>
     fun observeCachedArticleUrls(): Flow<Set<String>>
+    suspend fun incrementReadCount(url: String)
 }

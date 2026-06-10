@@ -76,6 +76,7 @@ class ArticleViewModel @Inject constructor(
 
             articleRepository.getArticle(url).fold(
                 onSuccess = { article ->
+                    articleRepository.incrementReadCount(url)
                     val progress = readingProgressRepository.getProgress(url)
                     val isBookmarked = bookmarkRepository.observeBookmarkState(url).first()
                     _uiState.value = ArticleUiState.Success(

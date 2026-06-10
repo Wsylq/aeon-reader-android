@@ -105,6 +105,10 @@ class ArticleRepositoryImpl @Inject constructor(
         return entity.toDomainArticle(parser)
     }
 
+    override suspend fun incrementReadCount(url: String) {
+        articleDao.incrementReadCount(url)
+    }
+
     override suspend fun getCategories(): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
             val categories = scraper.fetchCategories().getOrElse { error ->
@@ -165,7 +169,7 @@ class ArticleRemoteMediator(
 
     override suspend fun initialize(): RemoteMediator.InitializeAction {
         val key = remoteKeyDao.get(category ?: "all")
-        val isFresh = key != null && (System.currentTimeMillis() - key.lastUpdated) < 5 * 60 * 1000L
+        val isFresh = key != null && (System.currentTimeMillis() - key.lastUpdated) < 0L
         return if (isFresh) RemoteMediator.InitializeAction.SKIP_INITIAL_REFRESH
         else RemoteMediator.InitializeAction.LAUNCH_INITIAL_REFRESH
     }

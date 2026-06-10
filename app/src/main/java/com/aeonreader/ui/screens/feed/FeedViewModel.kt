@@ -8,6 +8,8 @@ import androidx.paging.map
 import com.aeonreader.data.local.ArticleSummaryProjection
 import com.aeonreader.data.repository.ArticleRepository
 import com.aeonreader.data.repository.BookmarkRepository
+import com.aeonreader.data.repository.KeepReadingItem
+import com.aeonreader.data.repository.ReadingProgressRepository
 import com.aeonreader.data.repository.UserPreferencesRepository
 import com.aeonreader.domain.ArticleSummary
 import com.aeonreader.domain.FeedLayout
@@ -17,9 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -40,7 +42,8 @@ sealed interface FeedUiState {
 class FeedViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val bookmarkRepository: BookmarkRepository
+    private val bookmarkRepository: BookmarkRepository,
+    private val readingProgressRepository: ReadingProgressRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FeedUiState>(FeedUiState.Loading)
@@ -57,6 +60,9 @@ class FeedViewModel @Inject constructor(
 
     private var categories: List<String> = emptyList()
     private var selectedCategory: String = "all"
+    private val _keepReadingItems = MutableStateFlow<List<KeepReadingItem>>(emptyList())
+    val keepReadingItems: StateFlow<List<KeepReadingItem>> = _keepReadingItems.asStateFlow()
+
     private var pagingFlow: Flow<PagingData<ArticleSummary>>? = null
     private var combineJob: Job? = null
     private var categoriesJob: Job? = null
@@ -64,6 +70,7 @@ class FeedViewModel @Inject constructor(
     init {
         loadInitial()
         observeBookmarks()
+        observeKeepReading()
     }
 
     private fun observeBookmarks() {
@@ -71,6 +78,26 @@ class FeedViewModel @Inject constructor(
             bookmarkRepository.observeBookmarks()
                 .map { bookmarks -> bookmarks.map { it.articleUrl }.toSet() }
                 .collect { urls -> _bookmarkedUrls.value = urls }
+        }
+    }
+
+    private fun observeKeepReading() {
+        viewModelScope.launch {
+            readingProgressRepository.observeAllProgress().collect { progressList ->
+                val items = progressList.mapNotNull { progress ->
+                    if (progress.progressPercent >= 100f) return@mapNotNull null
+                    val cached = articleRepository.getCachedArticle(progress.articleUrl)
+                    if (cached == null) return@mapNotNull null
+                    KeepReadingItem(
+                        url = cached.url,
+                        title = cached.title,
+                        author = cached.author,
+                        heroImageUrl = cached.heroImageUrl,
+                        progressPercent = progress.progressPercent
+                    )
+                }
+                _keepReadingItems.value = items
+            }
         }
     }
 

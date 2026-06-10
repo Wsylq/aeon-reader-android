@@ -53,6 +53,13 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE article_summaries ADD COLUMN readCount INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_article_summaries_readCount ON article_summaries(readCount ASC)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AeonDatabase {
@@ -60,7 +67,7 @@ object DatabaseModule {
             context,
             AeonDatabase::class.java,
             "aeon_reader.db"
-        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .fallbackToDestructiveMigration()
             .build()
     }

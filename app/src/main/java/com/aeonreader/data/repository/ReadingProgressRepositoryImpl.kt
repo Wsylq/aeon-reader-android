@@ -2,6 +2,10 @@ package com.aeonreader.data.repository
 
 import com.aeonreader.data.local.ReadingProgressDao
 import com.aeonreader.data.local.ReadingProgressEntity
+import com.aeonreader.domain.ReadingProgress
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,5 +34,26 @@ class ReadingProgressRepositoryImpl @Inject constructor(
 
     override suspend fun clearProgress(articleUrl: String) {
         readingProgressDao.delete(articleUrl)
+    }
+
+    override suspend fun getAllProgress(): List<ReadingProgress> {
+        return readingProgressDao.getAll().map { it.toDomainProgress() }
+    }
+
+    override fun observeAllProgress(): Flow<List<ReadingProgress>> {
+        return readingProgressDao.observeAll().map { entities ->
+            entities.map { it.toDomainProgress() }
+        }
+    }
+
+    private fun ReadingProgressEntity.toDomainProgress(): ReadingProgress {
+        val percent = if (totalBlocks > 0) {
+            (lastBlockIndex.toFloat() / totalBlocks * 100).coerceAtMost(100f)
+        } else 0f
+        return ReadingProgress(
+            articleUrl = articleUrl,
+            progressPercent = percent,
+            savedAt = Instant.ofEpochMilli(savedAt)
+        )
     }
 }
