@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,13 +48,16 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateManager: AppUpdateManager
 
+    private val shortcutData = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        shortcutData.value = intent?.data?.toString()
         setContent {
             AeonTheme {
                 val navController = rememberNavController()
-                HandleShortcutIntent(navController)
+                HandleShortcutIntent(navController = navController, intentData = shortcutData)
                 Box(modifier = Modifier.fillMaxSize()) {
                     AeonNavHost(navController = navController)
                     UpdateDialogHost(context = this@MainActivity, updateManager = updateManager)
@@ -65,17 +69,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        shortcutData.value = intent.data?.toString()
     }
 }
 
 @Composable
-private fun HandleShortcutIntent(navController: NavHostController) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val activity = context as? MainActivity ?: return
-    val intent = activity.intent ?: return
-
-    LaunchedEffect(intent.data) {
-        val destination = when (intent.data?.toString()) {
+private fun HandleShortcutIntent(navController: NavHostController, intentData: MutableState<String?>) {
+    LaunchedEffect(intentData.value) {
+        val data = intentData.value ?: return@LaunchedEffect
+        val destination = when (data) {
+            "eon://feed" -> "feed"
             "eon://search" -> "search"
             "eon://bookmarks" -> "bookmarks"
             else -> null
@@ -88,8 +91,7 @@ private fun HandleShortcutIntent(navController: NavHostController) {
                 launchSingleTop = true
                 restoreState = true
             }
-            // Prevent re-navigation on recomposition
-            activity.intent?.data = null
+            intentData.value = null
         }
     }
 }
