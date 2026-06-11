@@ -243,6 +243,14 @@ class ArticleRemoteMediator(
                 )
             }
 
+            if (loadType == LoadType.REFRESH) {
+                val titles = articleDao.getAllSummaryTitles()
+                for (entry in titles) {
+                    val score = userInterestRepository.getScore(entry.category, entry.title)
+                    articleDao.updateRelevanceScore(entry.url, score)
+                }
+            }
+
             RemoteMediator.MediatorResult.Success(
                 endOfPaginationReached = summaries.isEmpty()
             )
