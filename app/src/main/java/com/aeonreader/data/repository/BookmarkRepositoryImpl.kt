@@ -12,7 +12,8 @@ import javax.inject.Singleton
 
 @Singleton
 class BookmarkRepositoryImpl @Inject constructor(
-    private val bookmarkDao: BookmarkDao
+    private val bookmarkDao: BookmarkDao,
+    private val userInterestRepository: UserInterestRepository
 ) : BookmarkRepository {
 
     override fun observeBookmarks(): Flow<List<Bookmark>> {
@@ -35,6 +36,7 @@ class BookmarkRepositoryImpl @Inject constructor(
                 bookmarkedAt = System.currentTimeMillis()
             )
             bookmarkDao.insert(entity)
+            userInterestRepository.updateOnBookmark(article.category, article.title)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

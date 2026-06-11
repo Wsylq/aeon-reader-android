@@ -37,11 +37,19 @@ class UserInterestRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateOnRead(category: String?, title: String) {
+        updateInterests(category, title, 1)
+    }
+
+    override suspend fun updateOnBookmark(category: String?, title: String) {
+        updateInterests(category, title, 3)
+    }
+
+    private suspend fun updateInterests(category: String?, title: String, increment: Int) {
         context.interestStore.edit { prefs ->
             val catWeights = JSONObject(prefs[CATEGORY_WEIGHTS] ?: "{}")
             category?.let { cat ->
                 val key = cat.lowercase()
-                catWeights.put(key, catWeights.optInt(key, 0) + 1)
+                catWeights.put(key, catWeights.optInt(key, 0) + increment)
             }
             prefs[CATEGORY_WEIGHTS] = catWeights.toString()
 
@@ -51,7 +59,7 @@ class UserInterestRepositoryImpl @Inject constructor(
                 .split("\\s+".toRegex())
                 .filter { it.length > 3 && it !in STOP_WORDS }
             for (word in words.take(10)) {
-                kwWeights.put(word, kwWeights.optInt(word, 0) + 1)
+                kwWeights.put(word, kwWeights.optInt(word, 0) + increment)
             }
             prefs[KEYWORD_WEIGHTS] = kwWeights.toString()
         }
