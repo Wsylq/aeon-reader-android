@@ -48,16 +48,16 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateManager: AppUpdateManager
 
-    private val shortcutData = mutableStateOf<String?>(null)
+    private val shortcutAction = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        shortcutData.value = intent?.data?.toString()
+        shortcutAction.value = intent?.action
         setContent {
             AeonTheme {
                 val navController = rememberNavController()
-                HandleShortcutIntent(navController = navController, intentData = shortcutData)
+                HandleShortcutIntent(navController = navController, shortcutAction = shortcutAction)
                 Box(modifier = Modifier.fillMaxSize()) {
                     AeonNavHost(navController = navController)
                     UpdateDialogHost(context = this@MainActivity, updateManager = updateManager)
@@ -69,18 +69,18 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        shortcutData.value = intent.data?.toString()
+        shortcutAction.value = intent.action
     }
 }
 
 @Composable
-private fun HandleShortcutIntent(navController: NavHostController, intentData: MutableState<String?>) {
-    LaunchedEffect(intentData.value) {
-        val data = intentData.value ?: return@LaunchedEffect
-        val destination = when (data) {
-            "eon://feed" -> "feed"
-            "eon://search" -> "search"
-            "eon://bookmarks" -> "bookmarks"
+private fun HandleShortcutIntent(navController: NavHostController, shortcutAction: MutableState<String?>) {
+    LaunchedEffect(shortcutAction.value) {
+        val action = shortcutAction.value ?: return@LaunchedEffect
+        val destination = when (action) {
+            "com.aeonreader.ACTION_OPEN_FEED" -> "feed"
+            "com.aeonreader.ACTION_OPEN_SEARCH" -> "search"
+            "com.aeonreader.ACTION_OPEN_BOOKMARKS" -> "bookmarks"
             else -> null
         }
         if (destination != null) {
@@ -91,7 +91,7 @@ private fun HandleShortcutIntent(navController: NavHostController, intentData: M
                 launchSingleTop = true
                 restoreState = true
             }
-            intentData.value = null
+            shortcutAction.value = null
         }
     }
 }

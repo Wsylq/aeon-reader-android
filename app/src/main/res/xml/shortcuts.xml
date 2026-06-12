@@ -7,10 +7,9 @@
         android:shortcutShortLabel="@string/shortcut_feed"
         android:shortcutLongLabel="@string/shortcut_feed_long">
         <intent
-            android:action="android.intent.action.VIEW"
+            android:action="com.aeonreader.ACTION_OPEN_FEED"
             android:targetPackage="${applicationId}"
-            android:targetClass="com.aeonreader.MainActivity"
-            android:data="eon://feed" />
+            android:targetClass="com.aeonreader.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="search"
@@ -19,10 +18,9 @@
         android:shortcutShortLabel="@string/shortcut_search"
         android:shortcutLongLabel="@string/shortcut_search_long">
         <intent
-            android:action="android.intent.action.VIEW"
+            android:action="com.aeonreader.ACTION_OPEN_SEARCH"
             android:targetPackage="${applicationId}"
-            android:targetClass="com.aeonreader.MainActivity"
-            android:data="eon://search" />
+            android:targetClass="com.aeonreader.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="bookmarks"
@@ -31,9 +29,8 @@
         android:shortcutShortLabel="@string/shortcut_bookmarks"
         android:shortcutLongLabel="@string/shortcut_bookmarks_long">
         <intent
-            android:action="android.intent.action.VIEW"
+            android:action="com.aeonreader.ACTION_OPEN_BOOKMARKS"
             android:targetPackage="${applicationId}"
-            android:targetClass="com.aeonreader.MainActivity"
-            android:data="eon://bookmarks" />
+            android:targetClass="com.aeonreader.MainActivity" />
     </shortcut>
 </shortcuts>
