@@ -52,6 +52,8 @@ class ArticleViewModel @Inject constructor(
     val imageCache: ImageCache
 ) : ViewModel() {
 
+    private var bestBlockIndex = 0
+
     private val _uiState = MutableStateFlow<ArticleUiState>(ArticleUiState.Loading)
     val uiState: StateFlow<ArticleUiState> = _uiState.asStateFlow()
 
@@ -81,6 +83,7 @@ class ArticleViewModel @Inject constructor(
                     articleRepository.incrementReadCount(url)
                     userInterestRepository.updateOnRead(article.category, article.title)
                     val progress = readingProgressRepository.getProgress(url)
+                    bestBlockIndex = progress?.lastBlockIndex ?: 0
                     val isBookmarked = bookmarkRepository.observeBookmarkState(url).first()
                     _uiState.value = ArticleUiState.Success(
                         article = article,
@@ -93,6 +96,7 @@ class ArticleViewModel @Inject constructor(
                     val cached = articleRepository.getCachedArticle(url)
                     if (cached != null) {
                         val progress = readingProgressRepository.getProgress(url)
+                        bestBlockIndex = progress?.lastBlockIndex ?: 0
                         _uiState.value = ArticleUiState.Success(
                             article = cached,
                             isBookmarked = false,
@@ -140,15 +144,20 @@ class ArticleViewModel @Inject constructor(
 
         val totalBlocks = state.article.bodyBlocks.size
         val lastBlock = totalBlocks - 1
+
         if (blockIndex >= lastBlock) {
+            bestBlockIndex = totalBlocks
             viewModelScope.launch {
                 readingProgressRepository.saveProgress(state.article.url, totalBlocks, totalBlocks)
             }
             return
         }
 
-        viewModelScope.launch {
-            readingProgressRepository.saveProgress(state.article.url, blockIndex, state.article.bodyBlocks.size)
+        if (blockIndex > bestBlockIndex) {
+            bestBlockIndex = blockIndex
+            viewModelScope.launch {
+                readingProgressRepository.saveProgress(state.article.url, blockIndex, totalBlocks)
+            }
         }
     }
 

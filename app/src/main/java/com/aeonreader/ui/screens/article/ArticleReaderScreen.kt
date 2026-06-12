@@ -332,6 +332,12 @@ private fun ArticleReaderContent(
         onProgressUpdate(currentBlockIndex)
     }
 
+    LaunchedEffect(isAtEnd) {
+        if (isAtEnd && bodyBlocks.isNotEmpty()) {
+            onProgressUpdate(bodyBlocks.size)
+        }
+    }
+
     var highlightedBlockIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(initialProgress) {
