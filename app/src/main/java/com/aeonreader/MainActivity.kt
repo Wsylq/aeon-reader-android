@@ -3,6 +3,9 @@ package com.aeonreader
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -64,12 +67,45 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        registerDynamicShortcuts()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         shortcutAction.value = intent.action
+    }
+
+    private fun registerDynamicShortcuts() {
+        if (Build.VERSION.SDK_INT < 25) return
+        val manager = getSystemService(ShortcutManager::class.java)
+
+        manager.dynamicShortcuts = listOf(
+            ShortcutInfo.Builder(this, "feed")
+                .setShortLabel(getString(R.string.shortcut_feed))
+                .setLongLabel(getString(R.string.shortcut_feed_long))
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_shortcut_feed))
+                .setIntent(Intent(this, MainActivity::class.java).apply {
+                    action = "com.aeonreader.ACTION_OPEN_FEED"
+                })
+                .build(),
+            ShortcutInfo.Builder(this, "search")
+                .setShortLabel(getString(R.string.shortcut_search))
+                .setLongLabel(getString(R.string.shortcut_search_long))
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_shortcut_search))
+                .setIntent(Intent(this, MainActivity::class.java).apply {
+                    action = "com.aeonreader.ACTION_OPEN_SEARCH"
+                })
+                .build(),
+            ShortcutInfo.Builder(this, "bookmarks")
+                .setShortLabel(getString(R.string.shortcut_bookmarks))
+                .setLongLabel(getString(R.string.shortcut_bookmarks_long))
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_shortcut_bookmarks))
+                .setIntent(Intent(this, MainActivity::class.java).apply {
+                    action = "com.aeonreader.ACTION_OPEN_BOOKMARKS"
+                })
+                .build()
+        )
     }
 }
 
