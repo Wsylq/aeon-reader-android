@@ -82,6 +82,17 @@ data class ReadingProgressEntity(
     val savedAt: Long
 )
 
+@Entity(tableName = "reading_sessions", indices = [Index(value = ["dateRead"])])
+data class ReadingSessionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val articleUrl: String,
+    val articleTitle: String,
+    val category: String?,
+    val dateRead: Long,
+    val wordCount: Int,
+    val progressPercent: Float
+)
+
 @Entity(tableName = "remote_keys")
 data class RemoteKeyEntity(
     @PrimaryKey val category: String,

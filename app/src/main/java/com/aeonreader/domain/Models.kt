@@ -80,3 +80,9 @@ data class ReadingPreferences(
     val isMotionBlurEnabled: Boolean = true,
     val showRelatedArticles: Boolean = true
 )
+
+data class CategoryStat(
+    val category: String,
+    val count: Int,
+    val percentage: Float
+)

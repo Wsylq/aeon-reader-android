@@ -31,6 +31,7 @@ import com.aeonreader.ui.screens.bookmarks.BookmarksScreen
 import com.aeonreader.ui.screens.feed.FeedScreen
 import com.aeonreader.ui.screens.search.SearchScreen
 import com.aeonreader.ui.screens.settings.SettingsScreen
+import com.aeonreader.ui.screens.stats.StatsScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -56,7 +57,8 @@ fun AeonNavHost(
     val isArticleReader = currentDestination?.route?.startsWith("article") == true
     val isSettings = currentDestination?.route == Screen.Settings.route
     val isAccount = currentDestination?.route == Screen.Account.route
-    val showBottomNav = !isArticleReader && !isSettings && !isAccount
+    val isStats = currentDestination?.route == Screen.Stats.route
+    val showBottomNav = !isArticleReader && !isSettings && !isAccount && !isStats
 
     Scaffold(
         bottomBar = {
@@ -128,12 +130,19 @@ fun AeonNavHost(
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
-                    onAccountClick = { navController.navigate(Screen.Account.route) }
+                    onAccountClick = { navController.navigate(Screen.Account.route) },
+                    onStatsClick = { navController.navigate(Screen.Stats.route) }
                 )
             }
 
             composable(Screen.Account.route) {
                 AccountScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.Stats.route) {
+                StatsScreen(
                     onBack = { navController.popBackStack() }
                 )
             }

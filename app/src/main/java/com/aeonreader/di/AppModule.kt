@@ -14,6 +14,8 @@ import com.aeonreader.data.repository.CloudSyncRepository
 import com.aeonreader.data.repository.CloudSyncRepositoryImpl
 import com.aeonreader.data.repository.ReadingProgressRepository
 import com.aeonreader.data.repository.ReadingProgressRepositoryImpl
+import com.aeonreader.data.repository.StatsRepository
+import com.aeonreader.data.repository.StatsRepositoryImpl
 import com.aeonreader.data.repository.UserInterestRepository
 import com.aeonreader.data.repository.UserInterestRepositoryImpl
 import com.aeonreader.data.repository.UserPreferencesRepository
@@ -63,4 +65,8 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindUserInterestRepository(impl: UserInterestRepositoryImpl): UserInterestRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindStatsRepository(impl: StatsRepositoryImpl): StatsRepository
 }

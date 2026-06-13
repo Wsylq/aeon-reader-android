@@ -66,6 +66,23 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `reading_sessions` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `articleUrl` TEXT NOT NULL,
+                    `articleTitle` TEXT NOT NULL,
+                    `category` TEXT,
+                    `dateRead` INTEGER NOT NULL,
+                    `wordCount` INTEGER NOT NULL,
+                    `progressPercent` REAL NOT NULL
+                )"""
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_reading_sessions_dateRead ON reading_sessions(dateRead)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AeonDatabase {
@@ -73,7 +90,7 @@ object DatabaseModule {
             context,
             AeonDatabase::class.java,
             "aeon_reader.db"
-        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -89,4 +106,7 @@ object DatabaseModule {
 
     @Provides
     fun provideRemoteKeyDao(db: AeonDatabase): RemoteKeyDao = db.remoteKeyDao()
+
+    @Provides
+    fun provideStatsDao(db: AeonDatabase): StatsDao = db.statsDao()
 }
