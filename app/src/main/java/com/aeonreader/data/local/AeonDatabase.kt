@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         ReadingProgressEntity::class,
         RemoteKeyEntity::class,
         WordDefinitionEntity::class,
-        HighlightedWordEntity::class
+        HighlightedWordEntity::class,
+        ArchiveIndexEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AeonDatabase : RoomDatabase() {
@@ -21,4 +22,5 @@ abstract class AeonDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun readingProgressDao(): ReadingProgressDao
     abstract fun remoteKeyDao(): RemoteKeyDao
+    abstract fun archiveIndexDao(): ArchiveIndexDao
 }

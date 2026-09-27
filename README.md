@@ -13,7 +13,7 @@ Aeon.co has great longform essays but their site is slow on mobile, their search
 ## What it does
 
 - **Feed** – Parses the Aeon RSS feed (`/essays/feed.rss`) to show recent articles
-- **Search** – Searches the full Aeon archive via Mojeek (site:aeon.co + your query). Works from any IP, no CAPTCHA
+- **Search** – Searches a local index of ~1,200 essays built from Aeon's own feeds. No third-party engine, so no CAPTCHA and no IP blocks
 - **Article view** – Fetches and renders article text, hero images, inline images, blockquotes, subheadings
 - **Offline** – Saves articles locally. No internet? Still readable
 - **Bookmarks** – Tag articles you want to come back to
@@ -23,10 +23,11 @@ Aeon.co has great longform essays but their site is slow on mobile, their search
 
 No companion server. Everything runs on the phone:
 
-- **Feed**: Jsoup parses the RSS XML directly (uses `Parser.xmlParser()` – HTML parser breaks RSS `<link>` elements)
-- **Search**: Mojeek returns clean HTML, no JS required. Just a `GET` with a query
+- **Feed**: Jsoup parses the RSS XML directly (uses `Parser.xmlParser()` – HTML parser breaks RSS `<link>` elements). The home feed merges `/essays/feed.rss` with the five section feeds so paging has somewhere to go, and each section's feed supplies the category that the combined feed omits
+- **Search**: Aeon has no server-side search. Its `/search` page is client-side rendered and disallowed in `robots.txt`, there is no sitemap, and every third-party engine reachable without an API key is unusable from a phone — Mojeek serves a CAPTCHA, DuckDuckGo flips to `anomaly.js` after two queries, Brave rate-limits to one query per IP, and no public SearXNG instance answers. What Aeon *does* publish is a feed per section *and* a feed per subtopic (`/philosophy/ethics/feed.rss`), about 120 of them. The app reads all of them once, caches ~1,200 essays locally, and searches that. The five section feeds alone only ever carry the newest 20 essays each (66 articles), so this is an 18x larger corpus. It refreshes at most daily, and search also covers the full text of articles already opened, so it works offline.
+  - Known limit: the index covers titles, summaries and authors, so a word that appears only inside an essay's text (`"hitler"`, say) won't match unless you've already opened that essay. Indexing full text for all ~1,200 would mean downloading hundreds of megabytes.
 - **Article fetch**: Aeon runs on Vercel which blocks HTTP/2 with 429s. HTTP/1.1 works fine, so that's what article requests use
-- **Parser**: Finds the content div inside `<main>` (the one with the most text), extracts paragraphs, headings, blockquotes, and images. Filters out nav, related articles, social buttons by checking each element's parent chain instead of deleting DOM subtrees
+- **Parser**: Reads the byline from the `<aside>`, the section from the `section-*` class on `<main>`, and the publication date from the `font-mono` leaf element (not a document-wide regex, which used to match dates mentioned in the prose). Article chrome is dropped via the `print:hidden` class Aeon wraps it in, rather than by deleting DOM subtrees
 
 ## Build
 
@@ -52,7 +53,7 @@ APKs on the [releases page](https://github.com/Wsylq/aeon-reader-android/release
 - [x] Swipe-to-bookmark on feed
 - [x] Pull-to-refresh on feed
 - [ ] Category filter / sort on feed
-- [ ] Search bookmarked/cached articles
+- [x] Search bookmarked/cached articles
 - [ ] Export articles as PDF / plain text
 - [ ] OPML export
 - [ ] Text-to-speech (read aloud)

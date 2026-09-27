@@ -58,6 +58,40 @@ interface ArticleDao {
     @Query("UPDATE article_summaries SET relevanceScore = :score WHERE url IN (:urls)")
     suspend fun batchUpdateRelevanceScore(urls: List<String>, score: Float)
 
+    @Query("UPDATE article_summaries SET category = :category WHERE url = :url AND category IS NULL")
+    suspend fun updateSummaryCategory(url: String, category: String)
+
+    @Query(
+        """
+        SELECT url, title, category, heroImageUrl, estimatedReadingTimeMinutes, cachedAt, lastAccessedAt, page, pageOrder
+        FROM article_summaries
+        WHERE title LIKE '%' || :query || '%' COLLATE NOCASE
+           OR IFNULL(description, '') LIKE '%' || :query || '%' COLLATE NOCASE
+           OR IFNULL(author, '') LIKE '%' || :query || '%' COLLATE NOCASE
+        ORDER BY pageOrder ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchSummaries(query: String, limit: Int): List<ArticleSummaryProjection>
+
+    /**
+     * Full-text-ish search across fully cached article bodies. The RSS feeds only
+     * expose the newest ~20 essays per section, so this is what lets search reach
+     * older articles the user has already opened.
+     */
+    @Query(
+        """
+        SELECT s.url, s.title, s.category, s.heroImageUrl, s.estimatedReadingTimeMinutes,
+               s.cachedAt, s.lastAccessedAt, s.page, s.pageOrder
+        FROM article_summaries s
+        JOIN articles a ON a.url = s.url
+        WHERE a.bodyJson LIKE '%' || :query || '%' COLLATE NOCASE
+        ORDER BY s.pageOrder ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchCachedArticleBodies(query: String, limit: Int): List<ArticleSummaryProjection>
+
     @Query("SELECT * FROM articles WHERE url = :url")
     suspend fun getArticle(url: String): ArticleEntity?
 

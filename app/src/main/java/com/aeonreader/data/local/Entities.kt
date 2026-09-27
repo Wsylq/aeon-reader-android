@@ -35,6 +35,27 @@ data class ArticleSummaryEntity(
     val relevanceScore: Float = 1.0f
 )
 
+/**
+ * A row in the searchable archive index. Deliberately separate from
+ * [ArticleSummaryEntity]: that table backs the Paging feed and must only ever
+ * hold what the user has actually paged through. This one holds the whole
+ * ~1200-essay index and is replaced wholesale on refresh.
+ */
+@Entity(
+    tableName = "archive_index",
+    indices = [Index(value = ["category"])]
+)
+data class ArchiveIndexEntity(
+    @PrimaryKey val url: String,
+    val title: String,
+    val description: String?,
+    val author: String?,
+    val category: String?,
+    val heroImageUrl: String?,
+    val estimatedReadingTimeMinutes: Int,
+    val indexedAt: Long
+)
+
 @Entity(tableName = "articles")
 data class ArticleEntity(
     @PrimaryKey val url: String,

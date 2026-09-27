@@ -140,17 +140,12 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             val descEl = doc.selectFirst("h2.mb-6, h2[class*=max-w-120], h2[class*=text-pretty]")
             val description = descEl?.text()?.ifBlank { null }
 
-            val bodyText = doc.text()
-
-            val author = extractAuthor(bodyText)
-
-            val publicationDate = extractDate(bodyText)
-
-            val category = extractCategory(bodyText)
+            val publicationDate = extractDate(doc)
 
             val heroImg = doc.selectFirst("img[src*=images.aeonmedia]")
             val heroImage = heroImg?.let { extractSrc(it) }
 
+            val byline = extractByline(doc)
             val bodyBlocks = extractBodyBlocks(doc)
             val relatedArticles = parseRelatedArticles(doc)
 
@@ -169,10 +164,10 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                     url = "",
                     title = title,
                     description = description,
-                    author = author,
-                    authorBio = null,
+                    author = byline?.first,
+                    authorBio = byline?.second,
                     publicationDate = publicationDate,
-                    category = category,
+                    category = extractCategory(doc),
                     heroImageUrl = heroImage,
                     bodyBlocks = bodyBlocks,
                     wordCount = wordCount,
@@ -184,6 +179,31 @@ class AeonParserImpl @Inject constructor() : AeonParser {
         }
     }
 
+    /**
+     * Author name and bio. Aeon renders the byline into an `<aside>` beside the
+     * article body, and repeats the name in a mobile-only "by X" paragraph.
+     * Scanning the whole document with a regex is only a last resort: it happily
+     * matches navigation and footer copy.
+     */
+    private fun extractByline(doc: Element): Pair<String, String?>? {
+        val aside = doc.selectFirst("aside")
+
+        val name = aside?.selectFirst("a")?.text()?.ifBlank { null }
+            ?: doc.selectFirst("p")?.let { mobileByline ->
+                Regex("(?i)^\\s*by\\s+(.+?)\\s*$")
+                    .find(mobileByline.text())?.groupValues?.get(1)?.trim()
+            }?.ifBlank { null }
+            ?: extractAuthor(doc.text())
+
+        val bio = aside?.text()?.trim()
+            ?.takeIf { it.isNotEmpty() && it != name }
+            ?.removePrefix(name.orEmpty())
+            ?.trim()
+            ?.ifBlank { null }
+
+        return name?.let { it to bio }
+    }
+
     private fun extractAuthor(text: String): String? {
         val match = Regex("by\\s+(.+?)(?:\\s+[+×]|\\s+BIOS|\\s+Edited|$)").find(text)
         val name = match?.groupValues?.getOrNull(1)?.trim()
@@ -192,23 +212,55 @@ class AeonParserImpl @Inject constructor() : AeonParser {
         return simple?.groupValues?.getOrNull(1)
     }
 
-    private fun extractDate(text: String): LocalDate? {
-        val patterns = listOf(
-            Regex("""(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})"""),
-            Regex("""(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})"""),
-            Regex("""(\d{4}-\d{2}-\d{2})""")
-        )
-        for (pattern in patterns) {
-            val match = pattern.find(text)
-            if (match != null) {
-                val parsed = parseDateFromText(match.groupValues[1])
-                if (parsed != null) return parsed
+    /**
+     * Aeon prints the publication date as its own mono-styled line inside the
+     * article body, so it is matched structurally.
+     *
+     * This has to stay anchored: scanning body prose for a date picks up dates
+     * the article merely *mentions*. On the Habermas essay the prose says he
+     * "died on 14 March 2026" while the essay was published 25 September 2026,
+     * and the loose scan returned the death date.
+     */
+    private fun extractDate(doc: Element): LocalDate? {
+        val content = doc.selectFirst("#article-content, .article-content, [id*=article-content]")
+        if (content != null) {
+            for (el in content.select("*")) {
+                if (el.children().isNotEmpty()) continue
+                if (!el.classNames().contains("font-mono")) continue
+                val raw = el.text().trim()
+                for (pattern in ANCHORED_DATE_PATTERNS) {
+                    val match = pattern.matchEntire(raw) ?: continue
+                    parseDateFromText(match.groupValues[1])?.let { return it }
+                }
+            }
+        }
+        // Fall back to a loose scan if the layout ever changes.
+        for (text in listOf(doc.text())) {
+            for (pattern in LOOSE_DATE_PATTERNS) {
+                val match = pattern.find(text) ?: continue
+                parseDateFromText(match.groupValues[1])?.let { return it }
             }
         }
         return null
     }
 
-    private fun extractCategory(text: String): String? {
+    /**
+     * Aeon tags the page with its section, e.g. `<main class="section-philosophy">`.
+     * Reading that is far more dependable than hunting for section names in body copy.
+     */
+    private fun extractCategory(doc: Element): String? {
+        val main = doc.selectFirst("main")
+        val section = sequenceOf(main, doc)
+            .filterNotNull()
+            .flatMap { it.classNames().asSequence() }
+            .firstOrNull { it.startsWith("section-") }
+            ?.removePrefix("section-")
+            ?.takeIf { it.isNotBlank() }
+        if (section != null) return AeonSections.displayOf(section)
+        return extractCategoryFromText(doc.text())
+    }
+
+    private fun extractCategoryFromText(text: String): String? {
         val known = listOf(
             "Philosophy", "Science", "Psychology", "Society", "Culture",
             "Technology", "History", "Politics", "Arts", "Health"
@@ -278,6 +330,11 @@ class AeonParserImpl @Inject constructor() : AeonParser {
                 for (sel in nonContentSelectors) {
                     if (p.`is`(sel)) return true
                 }
+                // Aeon hides its furniture (audio player, topic tags, Save/Share,
+                // syndication links) from print, so `print:hidden` is a reliable
+                // "this is chrome, not prose" marker. No body paragraph carries
+                // a print:* class, so prose is never lost to this.
+                if (p.classNames().any { it.equals("print:hidden", ignoreCase = true) }) return true
                 p = p.parent()
             }
             return false
@@ -337,111 +394,6 @@ class AeonParserImpl @Inject constructor() : AeonParser {
             }
         }
         return blocks
-    }
-
-    override fun parseSearchResults(html: String): Result<List<ArticleSummary>> {
-        return try {
-            val doc = Jsoup.parse(html)
-            val seen = mutableSetOf<String>()
-            val articles = doc.select("a[rel=nofollow][href*=/aeon.co/essays/]")
-                .mapNotNull { link ->
-                    val href = link.attr("href")
-                    val title = link.text().ifBlank { return@mapNotNull null }
-                    val url = href
-                    if (url in seen) return@mapNotNull null
-                    seen.add(url)
-
-                    val parent = link.parent()
-                    val snippet = parent?.nextElementSibling()?.text()?.ifBlank { null }
-
-                    ArticleSummary(
-                        url = url,
-                        title = title,
-                        description = snippet,
-                        author = null,
-                        category = null,
-                        heroImageUrl = null,
-                        estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
-                        cachedAt = 0L
-                    )
-                }
-
-            return if (articles.isEmpty()) {
-                Result.failure(Exception("No search results found"))
-            } else {
-                Result.success(articles)
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to parse search results: ${e.message}", e))
-        }
-    }
-
-    override fun parseServerSearchResults(json: String): Result<List<ArticleSummary>> {
-        return try {
-            val root = org.json.JSONArray(json)
-            val results = mutableListOf<ArticleSummary>()
-            for (i in 0 until root.length()) {
-                val obj = root.getJSONObject(i)
-                val url = obj.optString("url", "")
-                if (url.isBlank() || !url.startsWith("https://aeon.co/")) continue
-                val title = obj.optString("title", "")
-                if (title.isBlank()) continue
-                val summary = obj.optString("summary", "") ?: ""
-                    val imageUrl = obj.optString("image_url", "")?.ifBlank { null }
-                    results.add(
-                        ArticleSummary(
-                            url = url,
-                            title = title,
-                            description = summary.ifBlank { null },
-                            author = null,
-                            category = null,
-                            heroImageUrl = imageUrl,
-                            estimatedReadingTimeMinutes = estimateReadingTime(title, summary.ifBlank { null }),
-                            cachedAt = 0L
-                        )
-                    )
-            }
-            if (results.isEmpty()) {
-                Result.failure(Exception("No results from server"))
-            } else {
-                Result.success(results)
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to parse server search results: ${e.message}", e))
-        }
-    }
-
-    override fun parseMojeekResults(html: String): Result<List<ArticleSummary>> {
-        return try {
-            val doc = Jsoup.parse(html)
-            val seen = mutableSetOf<String>()
-            val results = doc.select("li[class^=r]").mapNotNull { li ->
-                val link = li.selectFirst("a.title")
-                val url = link?.attr("href") ?: return@mapNotNull null
-                val title = link.text().ifBlank { return@mapNotNull null }
-                if (!url.startsWith("https://aeon.co/essays/")) return@mapNotNull null
-                if (url in seen) return@mapNotNull null
-                seen.add(url)
-                val snippet = li.selectFirst("p.s")?.text()?.ifBlank { null }
-                ArticleSummary(
-                    url = url,
-                    title = title,
-                    description = snippet,
-                    author = null,
-                    category = null,
-                    heroImageUrl = null,
-                    estimatedReadingTimeMinutes = estimateReadingTime(title, snippet),
-                    cachedAt = 0L
-                )
-            }
-            if (results.isEmpty()) {
-                Result.failure(Exception("No results found"))
-            } else {
-                Result.success(results)
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to parse Mojeek results: ${e.message}", e))
-        }
     }
 
     private fun estimateReadingTime(title: String?, description: String?): Int {
@@ -665,5 +617,21 @@ class AeonParserImpl @Inject constructor() : AeonParser {
 
     private fun unescape(s: String): String {
         return s.replace("\\n", "\n").replace("\\\\", "\\")
+    }
+
+    private companion object {
+        /** Whole-string date shapes, used to recognise a standalone date element. */
+        val ANCHORED_DATE_PATTERNS = listOf(
+            Regex("""\s*(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})\s*"""),
+            Regex("""\s*(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s*"""),
+            Regex("""\s*(\d{4}-\d{2}-\d{2})\s*""")
+        )
+
+        /** Substring date shapes, only used as a fallback when the layout is unknown. */
+        val LOOSE_DATE_PATTERNS = listOf(
+            Regex("""(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})"""),
+            Regex("""(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})"""),
+            Regex("""(\d{4}-\d{2}-\d{2})""")
+        )
     }
 }

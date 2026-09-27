@@ -89,4 +89,7 @@ object DatabaseModule {
 
     @Provides
     fun provideRemoteKeyDao(db: AeonDatabase): RemoteKeyDao = db.remoteKeyDao()
+
+    @Provides
+    fun provideArchiveIndexDao(db: AeonDatabase): ArchiveIndexDao = db.archiveIndexDao()
 }

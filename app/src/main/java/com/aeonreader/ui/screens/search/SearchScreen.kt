@@ -85,6 +85,39 @@ fun SearchScreen(
                     CircularProgressIndicator()
                 }
             }
+            is SearchUiState.Indexing -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Building search index",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        if (state.total > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Reading Aeon's feeds (${state.done} of ${state.total})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "One-time setup, so older essays are searchable too",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
             is SearchUiState.Success -> {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.results, key = { it.url }) { summary ->
@@ -100,11 +133,29 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No articles found for \"$query\"",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        Text(
+                            text = "No articles found for \"$query\"",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            // Be explicit about the ceiling rather than letting an
+                            // empty list look like "this doesn't exist".
+                            text = "Search covers article titles, summaries and authors, " +
+                                "plus the full text of anything you've already opened.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.refreshIndex() }) {
+                            Text("Refresh index")
+                        }
+                    }
                 }
             }
             is SearchUiState.Error -> {
